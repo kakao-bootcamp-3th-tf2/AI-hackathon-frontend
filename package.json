@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "docker:build": "docker build -t jojo-discount-fe .",
+    "docker:run": "docker run -p 3000:3000 jojo-discount-fe",
     "start": "next start",
     "lint": "eslint"
   },

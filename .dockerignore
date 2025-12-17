@@ -1,0 +1,15 @@
+.next
+node_modules
+.pnp
+.pnp.js
+*.log
+.DS_Store
+.git
+coverage
+dist
+tmp
+.env*
+!.env
+!.env.local
+!.env.development
+!.env.production
