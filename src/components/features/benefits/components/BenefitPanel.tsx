@@ -1,20 +1,28 @@
-import React from "react";
-import { format, isSameDay } from "date-fns";
+import React, { useEffect, useMemo } from "react";
+import { format, isSameDay, startOfDay, endOfDay, isWithinInterval } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Gift, CalendarDays, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useStore } from "@/store/useStore";
 import BenefitCard from "../BenefitCard";
+import SuggestBenefitCard from "../SuggestBenefitCard";
 import { Benefit } from "@/entities/benefit/types";
+import { SuggestBenefitWithEventInfo } from "@/entities/googleCalendar";
 import type { DateRange } from "@/store/StoreProvider";
 
 interface BenefitPanelProps {
   className?: string;
+  suggestedBenefits?: SuggestBenefitWithEventInfo[];
+  isLoading?: boolean;
+  onEditSuggest?: (eventId: string, suggest: any) => void;
 }
 
 interface BenefitPanelContentProps {
   benefits: Benefit[];
   hasSelection: boolean;
+  suggestedBenefits?: SuggestBenefitWithEventInfo[];
+  isLoading?: boolean;
+  onEditSuggest?: (eventId: string, suggest: any) => void;
 }
 
 const BenefitPanelHeader: React.FC<{ range: DateRange; hasSelection: boolean }> = ({
@@ -35,9 +43,6 @@ const BenefitPanelHeader: React.FC<{ range: DateRange; hasSelection: boolean }> 
 
   return (
     <div className="flex items-center gap-3 mb-6">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-primary shadow-soft">
-        <Gift className="h-6 w-6 text-primary-foreground" />
-      </div>
       <div>
         <h2 className="text-xl font-bold text-foreground">예상 혜택</h2>
         {hasSelection && labelText && (
@@ -50,26 +55,97 @@ const BenefitPanelHeader: React.FC<{ range: DateRange; hasSelection: boolean }> 
 
 const BenefitPanelContent: React.FC<BenefitPanelContentProps> = ({
   benefits,
-  hasSelection
+  hasSelection,
+  suggestedBenefits = [],
+  isLoading = false,
+  onEditSuggest
 }) => {
-  if (!hasSelection) {
+  const hasSuggestedBenefits = suggestedBenefits.length > 0;
+
+  useEffect(() => {
+    console.log("Suggested Benefits:", suggestedBenefits);
+  }, [suggestedBenefits]);
+
+  // 로딩 중일 때 spinner 표시
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+          <p className="text-sm text-muted-foreground">혜택 정보 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasSelection && !hasSuggestedBenefits) {
     return <EmptySelectionMessage />;
   }
 
-  if (benefits.length === 0) {
+  if (benefits.length === 0 && !hasSuggestedBenefits) {
     return <EmptyBenefitsMessage />;
   }
 
   return (
     <div className="space-y-3 pr-2">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-sm font-medium text-muted-foreground">
-          총 {benefits.length}개의 혜택
-        </span>
-      </div>
-      {benefits.map((benefit, index) => (
-        <BenefitCard key={benefit.id} benefit={benefit} index={index} />
-      ))}
+      {/* AI 추천 혜택 섹션 */}
+      {hasSuggestedBenefits && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              AI 추천 혜택
+            </span>
+          </div>
+          <div className="space-y-4 mb-6 pb-6 border-b border-border/50">
+            {/* 이벤트별로 suggestList를 표시 */}
+            {suggestedBenefits.map((eventWithSuggests, eventIndex) => (
+              <div
+                key={`${eventWithSuggests.eventId}-${eventIndex}`}
+                className="space-y-2"
+              >
+                {/* 이벤트 정보 헤더 */}
+                <div className="text-xs font-semibold text-muted-foreground px-2">
+                  {eventWithSuggests.summary}
+                </div>
+                {/* 해당 이벤트의 suggestList */}
+                <div className="space-y-2">
+                  {eventWithSuggests.suggestList.map((suggest, suggestIndex) => (
+                    <SuggestBenefitCard
+                      key={`${eventWithSuggests.eventId}-suggest-${suggestIndex}`}
+                      suggest={suggest}
+                      index={suggestIndex}
+                      eventId={eventWithSuggests.eventId}
+                      onEditSuggest={onEditSuggest}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* 일반 혜택 섹션 */}
+      {benefits.length > 0 && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-medium text-muted-foreground">
+              총 {benefits.length}개의 혜택
+            </span>
+          </div>
+          <div className="space-y-3">
+            {benefits.map((benefit, index) => (
+              <BenefitCard key={benefit.id} benefit={benefit} index={index} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* 혜택이 없는 경우 */}
+      {benefits.length === 0 && hasSuggestedBenefits && (
+        <p className="text-sm text-muted-foreground">추가 혜택이 없습니다</p>
+      )}
     </div>
   );
 };
@@ -98,16 +174,46 @@ const EmptyBenefitsMessage: React.FC = () => (
   </div>
 );
 
-export const BenefitPanel: React.FC<BenefitPanelProps> = ({ className }) => {
+export const BenefitPanel: React.FC<BenefitPanelProps> = ({
+  className,
+  suggestedBenefits = [],
+  isLoading = false,
+  onEditSuggest
+}) => {
   const { selectedRange, getBenefitsForDate } = useStore();
   const hasSelection = Boolean(selectedRange.start);
   const benefits = selectedRange.start ? getBenefitsForDate(selectedRange.start) : [];
 
+  // 선택한 날짜 범위 내의 추천 혜택만 필터링
+  const filteredSuggestedBenefits = useMemo(() => {
+    // suggestedBenefits가 없거나, hasSelection이 없으면 그대로 반환
+    if (suggestedBenefits.length === 0 || !hasSelection) {
+      return suggestedBenefits;
+    }
+
+    return suggestedBenefits.filter((benefit) => {
+      const eventDate = startOfDay(new Date(benefit.startAt));
+      const rangeStart = startOfDay(selectedRange.start!);
+      const rangeEnd = endOfDay(selectedRange.end ?? selectedRange.start!);
+
+      return isWithinInterval(eventDate, { start: rangeStart, end: rangeEnd });
+    });
+  }, [selectedRange, suggestedBenefits, hasSelection]);
+
   return (
     <section className={cn("flex flex-col h-full", className)}>
-      <BenefitPanelHeader range={selectedRange} hasSelection={hasSelection} />
+      <BenefitPanelHeader
+        range={selectedRange}
+        hasSelection={hasSelection || filteredSuggestedBenefits.length > 0}
+      />
       <div className="flex-1 overflow-y-auto">
-        <BenefitPanelContent benefits={benefits} hasSelection={hasSelection} />
+        <BenefitPanelContent
+          benefits={benefits}
+          hasSelection={hasSelection}
+          suggestedBenefits={filteredSuggestedBenefits}
+          isLoading={isLoading}
+          onEditSuggest={onEditSuggest}
+        />
       </div>
     </section>
   );

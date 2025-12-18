@@ -48,10 +48,10 @@ export interface GoogleCalendarSuggestRequest {
   eventIds: string[];
 }
 
-export interface GoogleCalendarSuggestResponse {
-  eventId: string;
+export interface GoogleCalendarSuggest {
   suggest: string;
-  updatedAt: string;
+  startAt: string; // ISO-8601 datetime
+  endAt: string; // ISO-8601 datetime
 }
 
 export interface NotityDto {
@@ -63,18 +63,46 @@ export interface NotityDto {
   updatedAt: string;
 }
 
+export interface GoogleCalendarEventWithSuggest {
+  id: number;
+  eventId: string;
+  summary: string;
+  startAt: string; // ISO-8601 datetime
+  endAt: string; // ISO-8601 datetime
+  content?: string;
+  suggestList: GoogleCalendarSuggest[];
+}
+
+export interface GoogleCalendarSuggestResponseItem {
+  eventId: string;
+  notity: GoogleCalendarEventWithSuggest;
+}
+
+export interface SuggestBenefitWithEventInfo {
+  eventId: string;
+  summary: string;
+  startAt: string;
+  endAt: string;
+  suggestList: GoogleCalendarSuggest[];
+}
+
 export interface GoogleCalendarEventDto {
-  id: string;
+  id: number;
+  eventId: string;
   title: string;
+  summary?: string;
   description?: string;
-  startTime: string; // ISO-8601
-  endTime: string; // ISO-8601
+  startTime?: string; // ISO-8601
+  endTime?: string; // ISO-8601
+  startAt?: string; // ISO-8601
+  endAt?: string; // ISO-8601
   location?: string;
   attendees?: Array<{
     email: string;
     name?: string;
     responseStatus?: "needsAction" | "declined" | "tentative" | "accepted";
   }>;
+  suggestList?: GoogleCalendarSuggest[];
   createdAt: string;
   updatedAt: string;
 }

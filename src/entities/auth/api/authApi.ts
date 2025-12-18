@@ -42,3 +42,15 @@ export const joinMember = async (payload: MemberJoinRequest) => {
   );
   return response.data.data;
 };
+
+/**
+ * Update member information with cards, pays, and plans
+ * PUT /api/members/profile
+ */
+export const updateMember = async (payload: MemberJoinRequest) => {
+  const response = await apiInstance.put<APIResponse<void>>(
+    "/api/members/profile",
+    payload
+  );
+  return response.data.data;
+};

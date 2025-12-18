@@ -73,7 +73,7 @@ export default function EventDetailModal({
             <div className="text-xs text-muted-foreground mb-2">
               {event.id.startsWith("google-") ? "이벤트 내용" : "설명"}
             </div>
-            <p className="text-sm text-foreground bg-muted/20 rounded-lg p-3 break-words">
+            <p className="text-sm text-foreground bg-muted/20 rounded-lg p-3 break-words whitespace-pre-line">
               {event.description}
             </p>
           </div>

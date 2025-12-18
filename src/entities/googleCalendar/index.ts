@@ -10,7 +10,10 @@ export type {
   GoogleCalendarCreateEventRequest,
   GoogleCalendarManualUpdateRequest,
   GoogleCalendarSuggestRequest,
-  GoogleCalendarSuggestResponse,
+  GoogleCalendarSuggest,
+  GoogleCalendarEventWithSuggest,
+  GoogleCalendarSuggestResponseItem,
+  SuggestBenefitWithEventInfo,
   GoogleCalendarEventDto,
   NotityDto,
   APIResponse

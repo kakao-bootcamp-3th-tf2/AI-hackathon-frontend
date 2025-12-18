@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Home, Search, User, type LucideIcon } from "lucide-react";
 
 const navItems: { label: string; href: string; icon: LucideIcon }[] = [
-  { label: "검색", href: "/app/search", icon: Search },
+  // { label: "검색", href: "/app/search", icon: Search },
   { label: "메인", href: "/app", icon: Home },
   { label: "마이페이지", href: "/app/mypage", icon: User }
 ];
@@ -22,7 +22,7 @@ export default function PageLayout({ children }: PageLayoutProps) {
 
       <nav
         aria-label="하단 네비게이션"
-        className="sticky bottom-0 z-10 flex items-center justify-between border-t border-border/70 bg-card/95 px-6 py-4 text-sm shadow-[0_-2px_10px_rgba(15,23,42,0.1)] backdrop-blur"
+        className="sticky bottom-0 gap-10 z-10 flex items-center justify-center border-t border-border/70 bg-card/95 px-6 py-4 text-sm shadow-[0_-2px_10px_rgba(15,23,42,0.1)] backdrop-blur"
       >
         {navItems.map((item) => {
           const isActive = router.pathname === item.href;

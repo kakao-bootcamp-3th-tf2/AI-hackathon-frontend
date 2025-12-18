@@ -11,7 +11,7 @@ import {
   APIResponse,
   GoogleCalendarManualUpdateRequest,
   GoogleCalendarSuggestRequest,
-  GoogleCalendarSuggestResponse,
+  GoogleCalendarSuggestResponseItem,
   NotityDto
 } from "../types";
 
@@ -65,8 +65,8 @@ export const manualUpdateEvent = async (request: GoogleCalendarManualUpdateReque
  * Add AI suggestions to multiple events
  * PATCH /api/calendar/events/suggest
  */
-export const suggestEvents = async (request: GoogleCalendarSuggestRequest) => {
-  const response = await apiInstance.patch<APIResponse<GoogleCalendarSuggestResponse[]>>(
+export const suggestEvents = async (request: GoogleCalendarSuggestRequest): Promise<GoogleCalendarSuggestResponseItem[]> => {
+  const response = await apiInstance.patch<APIResponse<GoogleCalendarSuggestResponseItem[]>>(
     "/api/calendar/events/suggest",
     request
   );

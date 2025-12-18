@@ -3,7 +3,7 @@ import { isSameDay, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils/cn";
 import { useStore } from "@/store/useStore";
 import type { DateRange } from "@/store/StoreProvider";
-import { usePrimaryCalendarEvents, GoogleCalendarEvent } from "@/entities/googleCalendar";
+import { usePrimaryCalendarEvents, useSuggestEvents, GoogleCalendarEvent, SuggestBenefitWithEventInfo } from "@/entities/googleCalendar";
 import type { Action } from "@/entities/action/types";
 import { useCalendarNavigation } from "./hooks/useCalendarNavigation";
 import CalendarHeader from "./components/CalendarHeader";
@@ -14,9 +14,11 @@ import CalendarLoadingSpinner from "./components/CalendarLoadingSpinner";
 
 interface CalendarFeatureProps {
   className?: string;
+  onSuggestedBenefits?: (benefits: SuggestBenefitWithEventInfo[]) => void;
+  onLoadingChange?: (isLoading: boolean) => void;
 }
 
-export default function CalendarFeature({ className }: CalendarFeatureProps) {
+export default function CalendarFeature({ className, onSuggestedBenefits, onLoadingChange }: CalendarFeatureProps) {
   const {
     selectedRange,
     selectSingleDate,
@@ -55,13 +57,23 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
    * content는 EventDetailModal에서만 표시
    */
   const convertGoogleEventToAction = useCallback((event: GoogleCalendarEvent): Action => {
+    const start = new Date(event.startAt);
+    const end = event.endAt ? new Date(event.endAt) : start;
+
     return {
       id: `google-${event.id}`,
-      date: new Date(event.startAt),
+      date: start,
       title: event.summary,
       description: event.description || event.content,
-      category: "shopping" // Google Calendar 이벤트는 "shopping" 카테고리로 기본 설정
+      category: "shopping", // Google Calendar 이벤트는 "shopping" 카테고리로 기본 설정
+      range: { start, end }
     };
+  }, []);
+
+  const getActionBounds = useCallback((action: Action) => {
+    const rangeStart = startOfDay(action.range?.start ?? action.date);
+    const rangeEnd = endOfDay(action.range?.end ?? action.range?.start ?? action.date);
+    return { start: rangeStart, end: rangeEnd };
   }, []);
 
   /**
@@ -72,14 +84,17 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
     (date: Date): Action[] => {
       if (!googleCalendarResponse?.events) return [];
 
+      const targetStart = startOfDay(date);
+      const targetEnd = endOfDay(date);
+
       return googleCalendarResponse.events
-        .filter((event) => {
-          const eventDate = new Date(event.startAt);
-          return isSameDay(eventDate, date);
-        })
-        .map(convertGoogleEventToAction);
+        .map(convertGoogleEventToAction)
+        .filter((action) => {
+          const { start, end } = getActionBounds(action);
+          return start <= targetEnd && end >= targetStart;
+        });
     },
-    [googleCalendarResponse, convertGoogleEventToAction]
+    [googleCalendarResponse, convertGoogleEventToAction, getActionBounds]
   );
 
   /**
@@ -106,21 +121,88 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
       // 날짜 범위 내의 Google 이벤트 필터링
       if (!googleCalendarResponse?.events) return localActions;
 
-      const googleActions = googleCalendarResponse.events
-        .filter((event) => {
-          const eventDate = startOfDay(new Date(event.startAt));
-          const rangeStart = startOfDay(range.start!);
-          const rangeEnd = endOfDay(range.end ?? range.start!);
+      const rangeStart = startOfDay(range.start!);
+      const rangeEnd = endOfDay(range.end ?? range.start!);
 
-          // 이벤트가 범위 내에 있는지 확인 (일자만 비교, 시간 제외)
-          return eventDate >= rangeStart && eventDate <= rangeEnd;
-        })
-        .map(convertGoogleEventToAction);
+      const googleActions = googleCalendarResponse.events
+        .map(convertGoogleEventToAction)
+        .filter((action) => {
+          const { start, end } = getActionBounds(action);
+          return start <= rangeEnd && end >= rangeStart;
+        });
 
       return [...localActions, ...googleActions];
     },
     [getActionsForRange, googleCalendarResponse, convertGoogleEventToAction]
   );
+
+  /**
+   * 드래그 범위 내의 Google Calendar eventId 추출
+   * Google 이벤트는 id가 "google-"로 시작함
+   */
+  const getGoogleEventIdsForRange = useCallback(
+    (range: DateRange): string[] => {
+      if (!googleCalendarResponse?.events) return [];
+
+      const rangeStart = startOfDay(range.start!);
+      const rangeEnd = endOfDay(range.end ?? range.start!);
+
+      const googleEventIds = googleCalendarResponse.events
+        .map((event) => ({
+          event,
+          action: convertGoogleEventToAction(event)
+        }))
+        .filter(({ action }) => {
+          const { start, end } = getActionBounds(action);
+          return start <= rangeEnd && end >= rangeStart;
+        })
+        .map(({ event }) => event.id);
+
+      return googleEventIds;
+    },
+    [googleCalendarResponse, convertGoogleEventToAction, getActionBounds]
+  );
+
+  // useSuggestEvents 뮤테이션
+  const suggestEventsMutation = useSuggestEvents({
+    onSuccess: (data) => {
+      console.log("AI 추천 혜택 받음:", data);
+
+      // 각 응답에서 이벤트 정보와 suggestList를 추출
+      const suggestBenefits = data.map((response) => ({
+        eventId: response.notity.eventId,
+        summary: response.notity.summary,
+        startAt: response.notity.startAt,
+        endAt: response.notity.endAt,
+        suggestList: response.notity.suggestList
+      }));
+
+      console.log("추천 혜택 (이벤트별):", suggestBenefits);
+      onSuggestedBenefits?.(suggestBenefits);
+      onLoadingChange?.(false);
+    },
+    onError: () => {
+      onLoadingChange?.(false);
+    }
+  });
+
+  // AI 추천 로딩 상태 감지
+  React.useEffect(() => {
+    onLoadingChange?.(suggestEventsMutation.isPending);
+  }, [suggestEventsMutation.isPending, onLoadingChange]);
+
+  // AI 일정 추천 핸들러
+  const handleSuggestEvents = useCallback(async () => {
+    const eventIds = getGoogleEventIdsForRange(selectedRange);
+
+    if (eventIds.length === 0) {
+      console.log("추천할 일정이 없습니다");
+      return;
+    }
+
+    console.log("AI 일정 추천 시작:", eventIds);
+    suggestEventsMutation.mutate({ eventIds });
+  }, [selectedRange, getGoogleEventIdsForRange]);
 
   // 이벤트 클릭 핸들러
   const handleEventClick = useCallback((event: Action) => {
@@ -173,6 +255,7 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
     dragStartRef.current = null;
   }, []);
 
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -220,26 +303,12 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
         />
       )}
 
-      {/* Google Calendar 로딩 중 스피너 표시 */}
-      {googleCalendarLoading ? (
-        <CalendarLoadingSpinner />
-      ) : (
-        <CalendarGrid
-          calendarDays={calendarDays}
-          currentMonth={currentMonth}
-          selectedRange={selectedRange}
-          onSelectDate={handleSelectDay}
-          onDayPointerDown={handleDayPointerDown}
-          onDayPointerEnter={handleDayPointerEnter}
-          onDayPointerUp={handlePointerUp}
-          getActionsForDate={getCombinedActionsForDate}
-        />
-      )}
-
       <SelectedDateSummary
         selectedRange={selectedRange}
         getActionsForRange={getCombinedActionsForRange}
         onEventClick={handleEventClick}
+        onSuggestEvents={handleSuggestEvents}
+        isLoadingSuggest={suggestEventsMutation.isPending}
       />
 
       {/* 이벤트 상세 모달 */}

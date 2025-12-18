@@ -10,7 +10,7 @@ import {
   UseMutationOptions
 } from "@tanstack/react-query";
 import { authQueryKeys } from "./authQueryKeys";
-import { refreshToken, getAuthStatus, joinMember } from "./authApi";
+import { refreshToken, getAuthStatus, joinMember, updateMember } from "./authApi";
 import { AuthTokenResponse, AuthStatusResponse, MemberJoinRequest } from "../types";
 
 /**
@@ -66,12 +66,34 @@ export const useRefreshToken = (
 export const useJoinMember = (
   mutationOptions?: Partial<UseMutationOptions<void, Error, MemberJoinRequest>>
 ) => {
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: joinMember,
+    // onSuccess: () => {
+    //   // Invalidate auth status to reflect ACTIVE status
+    //   queryClient.invalidateQueries({
+    //     queryKey: authQueryKeys.status.list()
+    //   });
+    // },
+    ...mutationOptions
+  });
+};
+
+/**
+ * useUpdateMember - Update member information
+ * Mutation for: PUT /api/members/{memberId}
+ * @param mutationOptions - Optional mutation options including onSuccess, onError callbacks
+ */
+export const useUpdateMember = (
+  mutationOptions?: Partial<UseMutationOptions<void, Error, MemberJoinRequest>>
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateMember,
     onSuccess: () => {
-      // Invalidate auth status to reflect ACTIVE status
+      // Invalidate auth status to reflect updated member info
       queryClient.invalidateQueries({
         queryKey: authQueryKeys.status.list()
       });
