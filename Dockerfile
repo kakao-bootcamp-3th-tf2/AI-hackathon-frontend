@@ -10,7 +10,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # 프로덕션 의존성만 설치
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --no-frozen-lockfile --prod
 
 # build
 FROM node:20-alpine AS builder
@@ -23,7 +23,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # 개발 의존성 포함 전체 설치
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # 소스 코드 복사
 COPY . .
