@@ -1,5 +1,4 @@
-import { useCallback, useMemo } from "react";
-import { useAuth } from "@/store/auth/AuthProvider";
+import { useMemo } from "react";
 
 const DEFAULT_GOOGLE_AUTH_URL = process.env.NEXT_PUBLIC_GOOGLE_AUTH_URL;
 
@@ -15,19 +14,13 @@ export interface UseGoogleLoginOptions {
 }
 
 export const useGoogleLogin = (options: UseGoogleLoginOptions = {}) => {
-  const { apiBaseUrl, setApiBaseUrl } = useAuth();
   const endpoint = useMemo(
     () => options.endpoint ?? DEFAULT_GOOGLE_AUTH_URL,
     [options.endpoint]
   );
 
-  return (baseUrl?: string) => {
-    const normalizedBaseUrl = (baseUrl?.trim() ?? apiBaseUrl ?? "").trim();
-    if (normalizedBaseUrl) {
-      setApiBaseUrl(normalizedBaseUrl);
-    }
-
-    if (typeof window === "undefined") return;
+  return () => {
+    if (typeof window === "undefined" || !endpoint) return;
     options.onBeforeRedirect?.(endpoint);
     window.location.assign(endpoint);
   };
