@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,18 @@ import { useActionForm } from "./hooks/useActionForm";
 import { useStore } from "@/store/useStore";
 import { categoryIcons, categoryLabels } from "@/entities/action/constants";
 import { ActionCategory, ActionDateRange } from "@/entities/action/types";
+import { useCreateCalendarEvent } from "@/entities/googleCalendar";
+
+// Action category를 Google Calendar 카테고리로 변환
+const getCategoryForCalendar = (category: ActionCategory): string => {
+  const categoryMap: Record<ActionCategory, string> = {
+    shopping: "쇼핑",
+    dining: "음식",
+    cafe: "카페",
+    movie: "영화"
+  };
+  return categoryMap[category];
+};
 
 interface ActionInputDialogProps {
   open: boolean;
@@ -26,6 +38,7 @@ export default function ActionInputDialog({
   const { selectedRange, addAction } = useStore();
   const { title, setTitle, category, setCategory, resetForm, isValid } =
     useActionForm(initialText);
+  const createCalendarEventMutation = useCreateCalendarEvent();
 
   const start = selectedRange.start;
   const end = selectedRange.end;
@@ -59,11 +72,23 @@ export default function ActionInputDialog({
     event.preventDefault();
     if (!isValid) return;
 
+    // 로컬 스토어에 액션 추가
     addAction({
       date,
       title: title.trim(),
       category,
       range: rangeToSubmit
+    });
+
+    // Google Calendar에 이벤트 생성
+    const eventStart = start || date;
+    const eventEnd = normalizedEnd || eventStart;
+
+    createCalendarEventMutation.mutate({
+      category: getCategoryForCalendar(category),
+      brand: title.trim(),
+      startAt: startOfDay(eventStart).toISOString(),
+      endAt: endOfDay(eventEnd).toISOString()
     });
 
     handleClose();
