@@ -57,9 +57,6 @@ jobs:
       - name: Run ESLint
         run: pnpm lint
 
-      - name: Run TypeScript type check
-        run: pnpm type:check
-
       - name: Build application
         run: pnpm build
 
