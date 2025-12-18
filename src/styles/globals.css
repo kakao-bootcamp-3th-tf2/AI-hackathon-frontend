@@ -1,41 +1,57 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* dark mode variant temporarily disabled while we stay on light mode
 @custom-variant dark (&:is(.dark *));
+*/
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
+  --background: 180 20% 99%;
+  --foreground: 180 30% 10%;
   --radius: 0.625rem;
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --card: 0 0% 100%;
+  --card-foreground: 180 30% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 180 30% 10%;
+  --primary: 168 80% 35%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 168 30% 94%;
+  --secondary-foreground: 168 80% 25%;
+  --muted: 180 15% 95%;
+  --muted-foreground: 180 10% 45%;
+  --accent: 168 60% 90%;
+  --accent-foreground: 168 80% 25%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 180 20% 90%;
+  --input: 180 20% 90%;
+  --ring: 168 80% 35%;
+
+  /* Custom tokens from second file */
+  --benefit: 45 90% 50%;
+  --benefit-foreground: 45 100% 20%;
+  --benefit-bg: 45 100% 95%;
+
+  --voice: 168 80% 35%;
+  --voice-glow: 168 80% 50%;
+
+  --gradient-primary: linear-gradient(135deg, hsl(168 80% 35%), hsl(180 70% 40%));
+  --gradient-hero: linear-gradient(180deg, hsl(168 30% 97%), hsl(180 20% 99%));
+  --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(180 20% 98%));
+
+  --shadow-soft: 0 4px 20px -4px hsl(180 30% 10% / 0.08);
+  --shadow-glow: 0 0 30px hsl(168 80% 50% / 0.3);
+  --shadow-card: 0 2px 12px -2px hsl(180 30% 10% / 0.06);
+
+  --sidebar-background: 0 0% 98%;
+  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar-primary: 240 5.9% 10%;
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 240 4.8% 95.9%;
+  --sidebar-accent-foreground: 240 5.9% 10%;
+  --sidebar-border: 220 13% 91%;
+  --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
 @theme inline {
@@ -81,12 +97,14 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+/* prefers-color-scheme dark rules are paused for now in favor of a single light palette
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 180 25% 8%;
+    --foreground: 180 10% 95%;
   }
 }
+*/
 
 body {
   background: var(--background);
@@ -94,39 +112,44 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-.dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
-}
+/* .dark block kept as reference for future re-enablement
+   --background: 180 25% 8%;
+   --foreground: 180 10% 95%;
+   --card: 180 20% 12%;
+   --card-foreground: 180 10% 95%;
+   --popover: 180 20% 12%;
+   --popover-foreground: 180 10% 95%;
+   --primary: 168 70% 45%;
+   --primary-foreground: 180 25% 8%;
+   --secondary: 180 20% 18%;
+   --secondary-foreground: 168 60% 70%;
+   --muted: 180 15% 18%;
+   --muted-foreground: 180 10% 55%;
+   --accent: 180 20% 20%;
+   --accent-foreground: 168 60% 70%;
+   --destructive: 0 62% 50%;
+   --destructive-foreground: 0 0% 100%;
+   --border: 180 15% 20%;
+   --input: 180 15% 20%;
+   --ring: 168 70% 45%;
+
+   --benefit-bg: 45 80% 15%;
+
+   --gradient-hero: linear-gradient(180deg, hsl(180 25% 10%), hsl(180 25% 8%));
+   --gradient-card: linear-gradient(145deg, hsl(180 20% 14%), hsl(180 20% 12%));
+
+   --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.3);
+   --shadow-card: 0 2px 12px -2px hsl(0 0% 0% / 0.2);
+
+   --sidebar-background: 240 5.9% 10%;
+   --sidebar-foreground: 240 4.8% 95.9%;
+   --sidebar-primary: 224.3 76.3% 48%;
+   --sidebar-primary-foreground: 0 0% 100%;
+   --sidebar-accent: 240 3.7% 15.9%;
+   --sidebar-accent-foreground: 240 4.8% 95.9%;
+   --sidebar-border: 240 3.7% 15.9%;
+   --sidebar-ring: 217.2 91.2% 59.8%;
+*/
 
 @layer base {
   * {
@@ -134,5 +157,127 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* tailwindcss-animate 플러그인: tailwind.config -> CSS로 이동 */
+@plugin "tailwindcss-animate";
+
+@theme {
+  /* fontFamily.sans */
+  --font-sans: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  /* colors (기존 hsl(var(--...)) 매핑 유지) */
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-benefit: hsl(var(--benefit));
+  --color-benefit-foreground: hsl(var(--benefit-foreground));
+  --color-benefit-bg: hsl(var(--benefit-bg));
+
+  --color-voice: hsl(var(--voice));
+  --color-voice-glow: hsl(var(--voice-glow));
+
+  /* sidebar (기존 키 구조 유지: sidebar.DEFAULT -> --color-sidebar) */
+  --color-sidebar: hsl(var(--sidebar-background));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  /* borderRadius */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* animation + keyframes */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-fade-in: fade-in 0.4s ease-out;
+  --animate-scale-in: scale-in 0.3s ease-out;
+  --animate-slide-in-right: slide-in-right 0.4s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+/* v3의 container.center/padding/screens(2xl=1400px) 대체 */
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+
+  @variant 2xl {
+    max-width: 1400px;
   }
 }
