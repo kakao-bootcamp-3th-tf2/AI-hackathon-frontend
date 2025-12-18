@@ -42,4 +42,6 @@ next-env.d.ts
 
 
 AGENTS.md
+CLAUDE.md
 pnpm-lock.yaml
+.idea/
