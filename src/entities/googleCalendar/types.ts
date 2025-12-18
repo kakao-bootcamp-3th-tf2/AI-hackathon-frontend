@@ -2,16 +2,19 @@
  * Google Calendar Entity Types
  */
 
+export interface GoogleCalendarSuggest {
+  suggest: string;
+  startAt: string; // ISO-8601 datetime
+  endAt: string; // ISO-8601 datetime
+}
+
 export interface GoogleCalendarEvent {
   id: string;
   summary: string; // 이벤트 제목
-  start: string; // ISO-8601 datetime
-  end: string; // ISO-8601 datetime
-  suggestList: Array<{
-    category?: string;
-    brand?: string;
-    benefit?: string;
-  }>;
+  startAt: string; // ISO-8601 datetime
+  endAt: string; // ISO-8601 datetime
+  suggestList: GoogleCalendarSuggest[];
+  content?: string; // 이벤트 상세 내용
   description?: string;
   location?: string;
 }

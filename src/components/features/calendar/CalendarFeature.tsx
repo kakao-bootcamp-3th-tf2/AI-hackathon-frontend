@@ -70,14 +70,15 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
 
   /**
    * Google Calendar 이벤트를 로컬 Action으로 변환
-   * category는 "other"로 고정 (나중에 suggestList.contents 추가될 예정)
+   * category는 "other"로 고정
+   * content는 EventDetailModal에서만 표시
    */
   const convertGoogleEventToAction = useCallback((event: GoogleCalendarEvent): Action => {
     return {
       id: `google-${event.id}`,
-      date: new Date(event.start),
+      date: new Date(event.startAt),
       title: event.summary,
-      description: event.description,
+      description: event.description || event.content,
       category: "other" // Google Calendar 이벤트는 "other" 카테고리로 고정
     };
   }, []);
@@ -92,7 +93,7 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
 
       return googleCalendarResponse.events
         .filter((event) => {
-          const eventDate = new Date(event.start);
+          const eventDate = new Date(event.startAt);
           return isSameDay(eventDate, date);
         })
         .map(convertGoogleEventToAction);
@@ -126,7 +127,7 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
 
       const googleActions = googleCalendarResponse.events
         .filter((event) => {
-          const eventDate = startOfDay(new Date(event.start));
+          const eventDate = startOfDay(new Date(event.startAt));
           const rangeStart = startOfDay(range.start!);
           const rangeEnd = endOfDay(range.end ?? range.start!);
 

@@ -51,11 +51,11 @@ export default function SelectedDateSummary({
               </span>
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{action.title}</div>
-                {action.description && (
+                {/* {action.description && (
                   <div className="text-xs text-muted-foreground truncate">
                     {action.description}
                   </div>
-                )}
+                )} */}
               </div>
             </button>
           ))}
