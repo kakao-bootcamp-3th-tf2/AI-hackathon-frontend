@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { isSameDay } from "date-fns";
 import { cn } from "@/lib/utils/cn";
 import { useStore } from "@/store/useStore";
+import { usePrimaryCalendarEvents, GoogleCalendarEvent } from "@/entities/googleCalendar";
+import type { Action } from "@/entities/action/types";
 import { useCalendarNavigation } from "./hooks/useCalendarNavigation";
 import CalendarHeader from "./components/CalendarHeader";
 import CalendarGrid from "./components/CalendarGrid";
@@ -15,11 +18,65 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
     selectedRange,
     selectSingleDate,
     setSelectedRange,
-    getActionsForDate,
+    getActionsForDate: getLocalActionsForDate,
     getActionsForRange
   } = useStore();
-  const { currentMonth, calendarDays, handlePrevMonth, handleNextMonth, goToToday } =
+  const { currentMonth, calendarDays, monthRange, handlePrevMonth, handleNextMonth, goToToday } =
     useCalendarNavigation();
+
+  // Google Calendar API 호출 - 월 범위로 조회
+  const { data: googleCalendarResponse } = usePrimaryCalendarEvents({
+    from: monthRange.calendarStartISO,
+    to: monthRange.calendarEndISO,
+    enabled: true
+  });
+
+  /**
+   * Google Calendar 이벤트를 로컬 Action으로 변환
+   * category는 "other"로 고정 (향후 확장 가능)
+   */
+  const convertGoogleEventToAction = useCallback(
+    (event: GoogleCalendarEvent): Action => {
+      return {
+        id: `google-${event.id}`,
+        date: new Date(event.startTime),
+        title: event.title,
+        description: event.description,
+        category: "other" // Google Calendar 이벤트는 기본적으로 "other" 카테고리
+      };
+    },
+    []
+  );
+
+  /**
+   * 특정 날짜의 Google Calendar 이벤트 조회
+   * ISO-8601 시간과 날짜를 비교해서 같은 날의 이벤트를 반환
+   */
+  const getGoogleEventsForDate = useCallback(
+    (date: Date): Action[] => {
+      if (!googleCalendarResponse?.events) return [];
+
+      return googleCalendarResponse.events
+        .filter((event) => {
+          const eventDate = new Date(event.startTime);
+          return isSameDay(eventDate, date);
+        })
+        .map(convertGoogleEventToAction);
+    },
+    [googleCalendarResponse?.events, convertGoogleEventToAction]
+  );
+
+  /**
+   * 로컬 액션과 Google Calendar 이벤트를 병합해서 반환
+   */
+  const getCombinedActionsForDate = useCallback(
+    (date: Date): Action[] => {
+      const localActions = getLocalActionsForDate(date);
+      const googleActions = getGoogleEventsForDate(date);
+      return [...localActions, ...googleActions];
+    },
+    [getLocalActionsForDate, getGoogleEventsForDate]
+  );
 
   const handleToday = useCallback(() => {
     goToToday();
@@ -98,7 +155,7 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
         onDayPointerDown={handleDayPointerDown}
         onDayPointerEnter={handleDayPointerEnter}
         onDayPointerUp={handlePointerUp}
-        getActionsForDate={getActionsForDate}
+        getActionsForDate={getCombinedActionsForDate}
       />
       <SelectedDateSummary
         selectedRange={selectedRange}
