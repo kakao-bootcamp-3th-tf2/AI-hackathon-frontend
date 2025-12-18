@@ -6,6 +6,7 @@ import { Card } from "@/entities/card/types";
 import { defaultCards } from "@/entities/card/data";
 import { Benefit } from "@/entities/benefit/types";
 import { defaultBenefits } from "@/entities/benefit/data";
+import { Pay, Plan } from "@/lib/mockData";
 
 export interface DateRange {
   start: Date | null;
@@ -21,6 +22,14 @@ interface StoreContextValue {
   getActionsForRange: (range: DateRange) => Action[];
   addAction: (payload: ActionFormPayload) => void;
   cards: Card[];
+  addCard: (cards: Card[]) => void;
+  removeCard: (cardId: string) => void;
+  pays: Pay[];
+  addPay: (pays: Pay[]) => void;
+  removePay: (payId: string) => void;
+  plans: Plan[];
+  addPlan: (plans: Plan[]) => void;
+  removePlan: (planId: string) => void;
   getBenefitsForDate: (date: Date) => Benefit[];
 }
 
@@ -47,8 +56,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     normalizeRange(new Date(), new Date())
   );
   const [actions, setActions] = useState<Action[]>(defaultActions);
-
-  const cards = useMemo<Card[]>(() => defaultCards, []);
+  const [cards, setCards] = useState<Card[]>(defaultCards);
+  const [pays, setPays] = useState<Pay[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
 
   const setSelectedRange = useCallback((start: Date | null, end: Date | null) => {
     setSelectedRangeState(normalizeRange(start, end));
@@ -70,6 +80,42 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       description: payload.description
     };
     setActions((prev) => [newAction, ...prev]);
+  }, []);
+
+  const addCard = useCallback((newCards: Card[]) => {
+    setCards((prev) => {
+      const existingIds = new Set(prev.map((card) => card.id));
+      const cardsToAdd = newCards.filter((card) => !existingIds.has(card.id));
+      return [...prev, ...cardsToAdd];
+    });
+  }, []);
+
+  const removeCard = useCallback((cardId: string) => {
+    setCards((prev) => prev.filter((card) => card.id !== cardId));
+  }, []);
+
+  const addPay = useCallback((newPays: Pay[]) => {
+    setPays((prev) => {
+      const existingIds = new Set(prev.map((pay) => pay.id));
+      const paysToAdd = newPays.filter((pay) => !existingIds.has(pay.id));
+      return [...prev, ...paysToAdd];
+    });
+  }, []);
+
+  const removePay = useCallback((payId: string) => {
+    setPays((prev) => prev.filter((pay) => pay.id !== payId));
+  }, []);
+
+  const addPlan = useCallback((newPlans: Plan[]) => {
+    setPlans((prev) => {
+      const existingIds = new Set(prev.map((plan) => plan.id));
+      const plansToAdd = newPlans.filter((plan) => !existingIds.has(plan.id));
+      return [...prev, ...plansToAdd];
+    });
+  }, []);
+
+  const removePlan = useCallback((planId: string) => {
+    setPlans((prev) => prev.filter((plan) => plan.id !== planId));
   }, []);
 
   const getActionsForDate = useCallback(
@@ -112,6 +158,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     getActionsForRange,
     addAction,
     cards,
+    addCard,
+    removeCard,
+    pays,
+    addPay,
+    removePay,
+    plans,
+    addPlan,
+    removePlan,
     getBenefitsForDate
   };
 

@@ -7,16 +7,17 @@ interface AuthContextValue {
 }
 
 const STORAGE_KEY = "ai-hackathon:isAuthenticated";
+const ACCESS_TOKEN_KEY = "accessToken";
 const COOKIE_NAME = "ai-hackathon:auth-token";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const setCookie = (value: string) => {
+const setCookie = (token: string) => {
   if (typeof document === "undefined") return;
   const expires = new Date();
   expires.setSeconds(expires.getSeconds() + COOKIE_MAX_AGE_SECONDS);
-  document.cookie = `${COOKIE_NAME}=${value}; path=/; expires=${expires.toUTCString()}; SameSite=Strict`;
+  document.cookie = `${COOKIE_NAME}=${encodeURIComponent(token)}; path=/; expires=${expires.toUTCString()}; SameSite=Strict`;
 };
 
 const clearCookie = () => {
@@ -32,10 +33,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
+    // Check for accessToken first (from OAuth callback)
+    const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
     const storedValue = window.localStorage.getItem(STORAGE_KEY);
-    if (storedValue === "true") {
+
+    if (accessToken || storedValue === "true") {
       const handle = window.setTimeout(() => {
         setIsAuthenticated(true);
+        // Store actual token in cookie for middleware validation
+        if (accessToken) {
+          setCookie(accessToken);
+        }
       }, 0);
 
       return () => {
@@ -48,7 +56,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(true);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, "true");
-      setCookie("true");
+      // Get accessToken from localStorage and store in cookie
+      const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+      if (accessToken) {
+        setCookie(accessToken);
+      }
     }
   }, []);
 
@@ -56,6 +68,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(false);
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+      window.localStorage.removeItem("memberId");
+      window.localStorage.removeItem("onboardingStatus");
       clearCookie();
     }
   }, []);

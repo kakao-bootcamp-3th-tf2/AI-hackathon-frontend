@@ -107,16 +107,13 @@ export default function CalendarGrid({
                     key={action.id}
                     className={cn(
                       "flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] md:text-xs truncate",
-                      // dark 모드 텍스트는 라이트 기준만 유지하도록 제거
-                      action.category === "payment" &&
-                        "bg-emerald-500/20 text-emerald-700",
                       action.category === "shopping" &&
                         "bg-orange-500/20 text-orange-700",
-                      action.category === "subscription" &&
-                        "bg-purple-500/20 text-purple-700",
-                      action.category === "travel" && "bg-blue-500/20 text-blue-700",
-                      action.category === "dining" && "bg-pink-500/20 text-pink-700",
-                      action.category === "other" && "bg-gray-500/20 text-gray-700"
+                      action.category === "dining" &&
+                        "bg-red-500/20 text-red-700",
+                      action.category === "cafe" &&
+                        "bg-amber-500/20 text-amber-700",
+                      action.category === "movie" && "bg-purple-500/20 text-purple-700"
                     )}
                     title={action.title}
                   >

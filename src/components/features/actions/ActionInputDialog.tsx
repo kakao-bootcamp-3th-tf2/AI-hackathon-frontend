@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,18 @@ import { useActionForm } from "./hooks/useActionForm";
 import { useStore } from "@/store/useStore";
 import { categoryIcons, categoryLabels } from "@/entities/action/constants";
 import { ActionCategory, ActionDateRange } from "@/entities/action/types";
-import { ko } from "date-fns/locale";
+import { useCreateCalendarEvent } from "@/entities/googleCalendar";
+
+// Action category를 Google Calendar 카테고리로 변환
+const getCategoryForCalendar = (category: ActionCategory): string => {
+  const categoryMap: Record<ActionCategory, string> = {
+    shopping: "쇼핑",
+    dining: "음식",
+    cafe: "카페",
+    movie: "영화"
+  };
+  return categoryMap[category];
+};
 
 interface ActionInputDialogProps {
   open: boolean;
@@ -27,6 +38,7 @@ export default function ActionInputDialog({
   const { selectedRange, addAction } = useStore();
   const { title, setTitle, category, setCategory, resetForm, isValid } =
     useActionForm(initialText);
+  const createCalendarEventMutation = useCreateCalendarEvent();
 
   const start = selectedRange.start;
   const end = selectedRange.end;
@@ -60,6 +72,7 @@ export default function ActionInputDialog({
     event.preventDefault();
     if (!isValid) return;
 
+    // 로컬 스토어에 액션 추가
     addAction({
       date,
       title: title.trim(),
@@ -67,11 +80,22 @@ export default function ActionInputDialog({
       range: rangeToSubmit
     });
 
+    // Google Calendar에 이벤트 생성
+    const eventStart = start || date;
+    const eventEnd = normalizedEnd || eventStart;
+
+    createCalendarEventMutation.mutate({
+      category: getCategoryForCalendar(category),
+      brand: title.trim(),
+      startAt: startOfDay(eventStart).toISOString(),
+      endAt: endOfDay(eventEnd).toISOString()
+    });
+
     handleClose();
   };
 
   return (
-    <Modal open={open} onClose={handleClose} title="행동 추가">
+    <Modal open={open} onClose={handleClose} title="일정 추가">
       <form className="space-y-4 py-2" onSubmit={handleSubmit}>
         <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
           <CalendarIcon className="h-4 w-4" />
@@ -83,10 +107,10 @@ export default function ActionInputDialog({
           )}
         </div>
 
-        <FormField label="내용" htmlFor="action-title">
+        <FormField label="브랜드" htmlFor="action-title">
           <Input
             id="action-title"
-            placeholder="예: 스타벅스 결제, 영화 예매"
+            placeholder="예: 스타벅스, 메가박스"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             autoFocus

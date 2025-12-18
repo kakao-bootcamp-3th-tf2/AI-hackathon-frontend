@@ -49,28 +49,9 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
     enabled: true
   });
 
-  // 디버깅용 로깅
-  useEffect(() => {
-    console.log("=== Google Calendar Debug ===");
-    console.log("API URL range:", {
-      from: monthRange.calendarStartISO,
-      to: monthRange.calendarEndISO
-    });
-    console.log("Response data:", googleCalendarResponse);
-    console.log("Loading:", googleCalendarLoading);
-    console.log("Error:", googleCalendarError, googleCalendarErrorObj);
-    console.log("=============================");
-  }, [
-    googleCalendarResponse,
-    googleCalendarLoading,
-    googleCalendarError,
-    googleCalendarErrorObj,
-    monthRange
-  ]);
-
   /**
    * Google Calendar 이벤트를 로컬 Action으로 변환
-   * category는 "other"로 고정
+   * category는 "shopping"으로 기본 설정
    * content는 EventDetailModal에서만 표시
    */
   const convertGoogleEventToAction = useCallback((event: GoogleCalendarEvent): Action => {
@@ -79,7 +60,7 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
       date: new Date(event.startAt),
       title: event.summary,
       description: event.description || event.content,
-      category: "other" // Google Calendar 이벤트는 "other" 카테고리로 고정
+      category: "shopping" // Google Calendar 이벤트는 "shopping" 카테고리로 기본 설정
     };
   }, []);
 
@@ -222,6 +203,22 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
         onNextMonth={handleNextMonth}
         onToday={handleToday}
       />
+
+      {/* Google Calendar 로딩 중 스피너 표시 */}
+      {googleCalendarLoading ? (
+        <CalendarLoadingSpinner />
+      ) : (
+        <CalendarGrid
+          calendarDays={calendarDays}
+          currentMonth={currentMonth}
+          selectedRange={selectedRange}
+          onSelectDate={handleSelectDay}
+          onDayPointerDown={handleDayPointerDown}
+          onDayPointerEnter={handleDayPointerEnter}
+          onDayPointerUp={handlePointerUp}
+          getActionsForDate={getCombinedActionsForDate}
+        />
+      )}
 
       {/* Google Calendar 로딩 중 스피너 표시 */}
       {googleCalendarLoading ? (
