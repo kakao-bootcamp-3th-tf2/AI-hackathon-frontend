@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { Home, Search, User, type LucideIcon } from "lucide-react";
 
 const navItems: { label: string; href: string; icon: LucideIcon }[] = [
-  { label: "검색", href: "/search", icon: Search },
+  { label: "검색", href: "/app/search", icon: Search },
   { label: "메인", href: "/app", icon: Home },
-  { label: "마이페이지", href: "/mypage", icon: User }
+  { label: "마이페이지", href: "/app/mypage", icon: User }
 ];
 
 interface PageLayoutProps {
