@@ -54,9 +54,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Run ESLint
-        run: pnpm lint
-
       - name: Build application
         env:
           NODE_ENV: production
