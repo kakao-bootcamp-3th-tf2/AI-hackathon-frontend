@@ -14,6 +14,7 @@ interface BenefitPanelProps {
   className?: string;
   suggestedBenefits?: SuggestBenefitWithEventInfo[];
   isLoading?: boolean;
+  onEditSuggest?: (eventId: string, suggest: any) => void;
 }
 
 interface BenefitPanelContentProps {
@@ -21,6 +22,7 @@ interface BenefitPanelContentProps {
   hasSelection: boolean;
   suggestedBenefits?: SuggestBenefitWithEventInfo[];
   isLoading?: boolean;
+  onEditSuggest?: (eventId: string, suggest: any) => void;
 }
 
 const BenefitPanelHeader: React.FC<{ range: DateRange; hasSelection: boolean }> = ({
@@ -55,7 +57,8 @@ const BenefitPanelContent: React.FC<BenefitPanelContentProps> = ({
   benefits,
   hasSelection,
   suggestedBenefits = [],
-  isLoading = false
+  isLoading = false,
+  onEditSuggest
 }) => {
   const hasSuggestedBenefits = suggestedBenefits.length > 0;
 
@@ -112,6 +115,8 @@ const BenefitPanelContent: React.FC<BenefitPanelContentProps> = ({
                       key={`${eventWithSuggests.eventId}-suggest-${suggestIndex}`}
                       suggest={suggest}
                       index={suggestIndex}
+                      eventId={eventWithSuggests.eventId}
+                      onEditSuggest={onEditSuggest}
                     />
                   ))}
                 </div>
@@ -172,7 +177,8 @@ const EmptyBenefitsMessage: React.FC = () => (
 export const BenefitPanel: React.FC<BenefitPanelProps> = ({
   className,
   suggestedBenefits = [],
-  isLoading = false
+  isLoading = false,
+  onEditSuggest
 }) => {
   const { selectedRange, getBenefitsForDate } = useStore();
   const hasSelection = Boolean(selectedRange.start);
@@ -205,6 +211,7 @@ export const BenefitPanel: React.FC<BenefitPanelProps> = ({
           hasSelection={hasSelection}
           suggestedBenefits={filteredSuggestedBenefits}
           isLoading={isLoading}
+          onEditSuggest={onEditSuggest}
         />
       </div>
     </section>

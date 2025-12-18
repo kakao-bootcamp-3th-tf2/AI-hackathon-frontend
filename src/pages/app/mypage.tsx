@@ -1,20 +1,374 @@
-import Header from "@/components/widgets/Header";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { useStore } from "@/store/useStore";
+import { CreditCard, Smartphone, Package, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/entities/card/types";
+import { SelectionModal } from "@/components/features/setup/SelectionModal";
+import { useUpdateMember, useAuthStatus } from "@/entities/auth";
+import {
+  cardSelectionOptions,
+  paySelectionOptions,
+  planSelectionOptions,
+  Pay,
+  Plan
+} from "@/lib/mockData";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function MyPage() {
+  const { data: authStatus } = useAuthStatus();
+  const {
+    cards,
+    addCard,
+    removeCard,
+    pays,
+    addPay,
+    removePay,
+    plans,
+    addPlan,
+    removePlan
+  } = useStore();
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const [hoveredPayId, setHoveredPayId] = useState<string | null>(null);
+  const [hoveredPlanId, setHoveredPlanId] = useState<string | null>(null);
+  const [memberId, setMemberId] = useState<string | null>(null);
+
+  // Modal states
+  const [cardModalOpen, setCardModalOpen] = useState(false);
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+
+  // Load memberId from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const id = localStorage.getItem("memberId");
+      setMemberId(id);
+    }
+  }, []);
+
+  const queryClient = useQueryClient();
+
+  // Update member mutation
+  const updateMutation = useUpdateMember({
+    onSuccess: () => {
+      console.log("✓ 정보 수정 완료!");
+      toast.success("정보가 성공적으로 수정되었습니다.");
+      queryClient.invalidateQueries({
+        queryKey: ["auth", "status"]
+      });
+    },
+    onError: (error) => {
+      console.error("✗ 정보 수정 실패:", error);
+      toast.error("정보 수정 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  });
+
+  const handleAddCard = () => {
+    setCardModalOpen(true);
+  };
+
+  const handleSelectCards = (selectedCards: Card[]) => {
+    addCard(selectedCards);
+    setCardModalOpen(false);
+  };
+
+  const handleAddPay = () => {
+    setPayModalOpen(true);
+  };
+
+  const handleSelectPays = (selectedPays: Pay[]) => {
+    addPay(selectedPays);
+    setPayModalOpen(false);
+  };
+
+  const handleAddPlan = () => {
+    setPlanModalOpen(true);
+  };
+
+  const handleSelectPlans = (selectedPlans: Plan[]) => {
+    addPlan(selectedPlans);
+    setPlanModalOpen(false);
+  };
+
+  const handleUpdateInfo = async () => {
+    // 유효성 검증
+    if (cards.length === 0) {
+      toast.error("최소 하나 이상의 카드를 선택해주세요.");
+      return;
+    }
+
+    if (plans.length === 0) {
+      toast.error("최소 하나 이상의 요금제를 선택해주세요.");
+      return;
+    }
+
+    // 선택한 요금제 (첫 번째만 사용)
+    const selectedTelecom = plans[0].id;
+
+    // 카드와 페이 id를 payments 배열로 변환
+    const paymentIds = [
+      ...cards.map((card) => card.id),
+      ...pays.map((pay) => pay.id)
+    ];
+
+    const updateData = {
+      memberId: parseInt(memberId || "0"),
+      telecom: selectedTelecom,
+      payments: paymentIds
+    };
+
+    try {
+      await updateMutation.mutateAsync(updateData);
+    } catch (error) {
+      console.error("정보 수정 중 오류 발생:", error);
+    }
+  };
+
+  const handleDeleteCard = (cardId: string) => {
+    removeCard(cardId);
+    setHoveredCardId(null);
+  };
+
+  const handleDeletePay = (payId: string) => {
+    removePay(payId);
+    setHoveredPayId(null);
+  };
+
+  const handleDeletePlan = (planId: string) => {
+    removePlan(planId);
+    setHoveredPlanId(null);
+  };
+
   return (
-    <div className="gradient-hero min-h-screen">
-      <Header />
-      <main className="container px-4 py-8">
-        <section className="rounded-3xl border border-border/60 bg-white/80 p-6 shadow-card backdrop-blur">
-          <h1 className="text-2xl font-bold text-foreground">마이페이지</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            연결된 카드와 알림 설정, 내 일정 등 개인 정보를 한곳에서 관리할 수 있습니다. 곧 더 많은 항목을 보여드릴게요.
-          </p>
-          <div className="mt-6 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground/90">
-            준비 중입니다
+    <div className="max-w-3xl mx-auto py-8 px-6">
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-2">마이페이지</h1>
+        <p className="text-muted-foreground">내 정보를 수정하고 관리하세요</p>
+      </div>
+
+      <div className="space-y-6">
+        {/* Cards Section */}
+        <div className="rounded-2xl border border-border/50 bg-card shadow-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <CreditCard className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">내 카드</h2>
+                <p className="text-sm text-muted-foreground">
+                  현재 등록되어 있는 카드들입니다
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAddCard}
+              className="gap-2 rounded-lg"
+            >
+              <Plus className="h-4 w-4" />
+              추가
+            </Button>
           </div>
-        </section>
-      </main>
+
+          {cards.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">등록된 카드가 없습니다</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {cards.map((card) => (
+                <div
+                  key={card.id}
+                  className="relative rounded-xl border border-border/50 p-4 transition-all hover:shadow-card hover:border-primary/30 group"
+                  onMouseEnter={() => setHoveredCardId(card.id)}
+                  onMouseLeave={() => setHoveredCardId(null)}
+                >
+                  <h4 className="font-semibold text-foreground">{card.name}</h4>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {card.issuer} • {card.currency}
+                  </p>
+
+                  {/* Delete Button - appears on hover */}
+                  {hoveredCardId === card.id && (
+                    <button
+                      onClick={() => handleDeleteCard(card.id)}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
+                      title="카드 삭제"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pay Section */}
+        <div className="rounded-2xl border border-border/50 bg-card shadow-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <Smartphone className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">페이</h2>
+                <p className="text-sm text-muted-foreground">
+                  카카오페이, 토스 페이, 네이버 페이 등을 등록하세요
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAddPay}
+              className="gap-2 rounded-lg"
+            >
+              <Plus className="h-4 w-4" />
+              추가
+            </Button>
+          </div>
+
+          {pays.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">등록된 페이가 없습니다</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {pays.map((pay) => (
+                <div
+                  key={pay.id}
+                  className="relative rounded-xl border border-border/50 p-4 transition-all hover:shadow-card hover:border-primary/30 group"
+                  onMouseEnter={() => setHoveredPayId(pay.id)}
+                  onMouseLeave={() => setHoveredPayId(null)}
+                >
+                  <h4 className="font-semibold text-foreground">{pay.name}</h4>
+                  <p className="text-sm text-muted-foreground mt-1">{pay.provider}</p>
+
+                  {/* Delete Button - appears on hover */}
+                  {hoveredPayId === pay.id && (
+                    <button
+                      onClick={() => handleDeletePay(pay.id)}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
+                      title="페이 삭제"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Plan Section */}
+        <div className="rounded-2xl border border-border/50 bg-card shadow-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <Package className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">내 요금제</h2>
+                <p className="text-sm text-muted-foreground">
+                  LG U+, SKT, KT 등을 등록하세요
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAddPlan}
+              className="gap-2 rounded-lg"
+            >
+              <Plus className="h-4 w-4" />
+              추가
+            </Button>
+          </div>
+
+          {plans.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">등록된 요금제가 없습니다</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="relative rounded-xl border border-border/50 p-4 transition-all hover:shadow-card hover:border-primary/30 group"
+                  onMouseEnter={() => setHoveredPlanId(plan.id)}
+                  onMouseLeave={() => setHoveredPlanId(null)}
+                >
+                  <h4 className="font-semibold text-foreground">{plan.name}</h4>
+                  <p className="text-sm text-muted-foreground mt-1">{plan.provider}</p>
+
+                  {/* Delete Button - appears on hover */}
+                  {hoveredPlanId === plan.id && (
+                    <button
+                      onClick={() => handleDeletePlan(plan.id)}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-colors"
+                      title="요금제 삭제"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Update Button */}
+        <div className="mt-8 pt-6 border-t border-border/50">
+          <Button
+            onClick={handleUpdateInfo}
+            disabled={updateMutation.isPending}
+            className="w-full h-12 rounded-lg text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {updateMutation.isPending ? "수정 중..." : "정보 수정하기"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Modals */}
+      <SelectionModal<Card>
+        open={cardModalOpen}
+        onClose={() => setCardModalOpen(false)}
+        onSelect={handleSelectCards}
+        title="카드 선택"
+        options={cardSelectionOptions}
+        displayKey="name"
+        subtitleKey="issuer"
+        initialSelectedIds={cards.map((card) => card.id)}
+        mode="multi"
+      />
+
+      <SelectionModal<Pay>
+        open={payModalOpen}
+        onClose={() => setPayModalOpen(false)}
+        onSelect={handleSelectPays}
+        title="페이 선택"
+        options={paySelectionOptions}
+        displayKey="name"
+        subtitleKey="provider"
+        initialSelectedIds={pays.map((pay) => pay.id)}
+        mode="multi"
+      />
+
+      <SelectionModal<Plan>
+        open={planModalOpen}
+        onClose={() => setPlanModalOpen(false)}
+        onSelect={handleSelectPlans}
+        title="요금제 선택"
+        options={planSelectionOptions}
+        displayKey="name"
+        subtitleKey="provider"
+        initialSelectedIds={plans.map((plan) => plan.id)}
+        mode="single"
+      />
     </div>
   );
 }

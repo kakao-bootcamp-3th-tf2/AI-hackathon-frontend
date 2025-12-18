@@ -3,25 +3,25 @@ import { Card } from "@/entities/card/types";
 // Card selection options for setup modal
 export const cardSelectionOptions: Card[] = [
   {
-    id: "card-samsung",
+    id: "SamsungCard",
     name: "삼성 카드",
     issuer: "삼성카드",
     currency: "KRW"
   },
   {
-    id: "card-hyundai",
+    id: "HyundaiCard",
     name: "현대카드",
     issuer: "현대카드",
     currency: "KRW"
   },
   {
-    id: "card-hana",
+    id: "HanaCard",
     name: "하나카드",
     issuer: "하나카드",
     currency: "KRW"
   },
   {
-    id: "card-kookmin",
+    id: "KBCard",
     name: "국민카드",
     issuer: "국민은행",
     currency: "KRW"
@@ -37,17 +37,17 @@ export interface Pay {
 
 export const paySelectionOptions: Pay[] = [
   {
-    id: "pay-kakao",
+    id: "KakaoPay",
     name: "카카오페이",
     provider: "카카오"
   },
   {
-    id: "pay-toss",
+    id: "TossPay",
     name: "토스 페이",
     provider: "토스"
   },
   {
-    id: "pay-naver",
+    id: "NaverPay",
     name: "네이버 페이",
     provider: "네이버"
   }
@@ -62,17 +62,17 @@ export interface Plan {
 
 export const planSelectionOptions: Plan[] = [
   {
-    id: "plan-lgu",
+    id: "LGU+",
     name: "LG U+",
     provider: "LG U+"
   },
   {
-    id: "plan-skt",
+    id: "SKT",
     name: "SKT",
     provider: "SKT"
   },
   {
-    id: "plan-kt",
+    id: "KT",
     name: "KT",
     provider: "KT"
   }

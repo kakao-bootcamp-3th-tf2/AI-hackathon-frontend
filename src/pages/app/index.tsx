@@ -7,7 +7,13 @@ import ActionInputDialog from "@/components/features/actions/ActionInputDialog";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/store/useStore";
 import { useToast } from "@/hooks/useToast";
-import { SuggestBenefitWithEventInfo } from "@/entities/googleCalendar";
+import {
+  SuggestBenefitWithEventInfo,
+  GoogleCalendarSuggest,
+  useManualUpdateEvent
+} from "@/entities/googleCalendar";
+import { useQueryClient } from "@tanstack/react-query";
+import { googleCalendarQueryKeys } from "@/entities/googleCalendar/api/googleCalendarQueryKeys";
 
 export default function MainPage() {
   const { selectedRange } = useStore();
@@ -19,6 +25,29 @@ export default function MainPage() {
     Record<string, SuggestBenefitWithEventInfo>
   >({});
   const [isLoadingBenefits, setIsLoadingBenefits] = useState(false);
+
+  // 혜택 수정 mutation
+  const queryClient = useQueryClient();
+  const manualUpdateMutation = useManualUpdateEvent({
+    onSuccess: () => {
+      toast({
+        title: "혜택 수정 완료",
+        description: "혜택이 성공적으로 수정되었습니다."
+      });
+      queryClient.invalidateQueries({
+        queryKey: googleCalendarQueryKeys.primary.all
+      });
+      // Note: Google Calendar API는 자동으로 refetch됩니다 (useManualUpdateEvent의 onSuccess에서 invalidateQueries)
+    },
+    onError: (error) => {
+      toast({
+        title: "혜택 수정 실패",
+        description: "혜택 수정 중 오류가 발생했습니다.",
+        variant: "destructive"
+      });
+      console.error("Failed to edit suggest:", error);
+    }
+  });
 
   const handleAddAction = () => {
     if (!selectedDate) {
@@ -55,6 +84,42 @@ export default function MainPage() {
       newBenefits.forEach((benefit) => {
         updated[benefit.eventId] = benefit;
       });
+      return updated;
+    });
+  };
+
+  // 혜택 수정 핸들러
+  const handleEditSuggest = (eventId: string, suggest: GoogleCalendarSuggest) => {
+    console.log("혜택 수정:", eventId, suggest);
+
+    // API 호출
+    manualUpdateMutation.mutate({
+      eventId,
+      startAt: suggest.startAt,
+      endAt: suggest.endAt,
+      suggest: suggest.suggest
+    });
+
+    // 선택한 혜택을 suggestedBenefitsMap에서 제거
+    setSuggestedBenefitsMap((prev) => {
+      const updated = { ...prev };
+      if (updated[eventId]) {
+        // 해당 eventId의 suggestList에서 이 suggest를 제거
+        const filtered = updated[eventId].suggestList.filter(
+          (s) => s.suggest !== suggest.suggest
+        );
+
+        if (filtered.length === 0) {
+          // suggestList가 비었으면 전체 entry 제거
+          delete updated[eventId];
+        } else {
+          // 남은 suggestList로 업데이트
+          updated[eventId] = {
+            ...updated[eventId],
+            suggestList: filtered
+          };
+        }
+      }
       return updated;
     });
   };
@@ -99,6 +164,7 @@ export default function MainPage() {
               <BenefitPanel
                 suggestedBenefits={suggestedBenefitsArray}
                 isLoading={isLoadingBenefits}
+                onEditSuggest={handleEditSuggest}
               />
             </div>
           </aside>

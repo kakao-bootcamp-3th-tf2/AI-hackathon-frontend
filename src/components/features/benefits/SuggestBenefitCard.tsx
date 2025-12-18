@@ -1,19 +1,39 @@
-import React from "react";
+import React, { useState } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { Sparkles } from "lucide-react";
+import { Sparkles, MoreVertical, Edit2 } from "lucide-react";
 import { GoogleCalendarSuggest } from "@/entities/googleCalendar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 
 interface SuggestBenefitCardProps {
   suggest: GoogleCalendarSuggest;
   index: number;
+  eventId: string;
+  onEditSuggest?: (eventId: string, suggest: GoogleCalendarSuggest) => void;
 }
 
-export default function SuggestBenefitCard({ suggest, index }: SuggestBenefitCardProps) {
+export default function SuggestBenefitCard({
+  suggest,
+  index,
+  eventId,
+  onEditSuggest
+}: SuggestBenefitCardProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   // 시간 포맷팅
   const startTime = format(new Date(suggest.startAt), "HH:mm", { locale: ko });
   const endTime = format(new Date(suggest.endAt), "HH:mm", { locale: ko });
   const timeRange = `${startTime} ~ ${endTime}`;
+
+  const handleEditClick = () => {
+    onEditSuggest?.(eventId, suggest);
+    setIsOpen(false);
+  };
 
   return (
     <article
@@ -40,6 +60,21 @@ export default function SuggestBenefitCard({ suggest, index }: SuggestBenefitCar
             <span className="text-xs text-muted-foreground">AI 추천</span>
           </div>
         </div>
+
+        {/* 메뉴 버튼 */}
+        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+          <DropdownMenuTrigger asChild>
+            <button className="shrink-0 rounded-md p-1 hover:bg-accent/20 transition-colors">
+              <MoreVertical className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleEditClick}>
+              <Edit2 className="h-4 w-4 mr-2" />
+              <span>혜택 수정</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </article>
   );

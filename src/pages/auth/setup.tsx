@@ -14,6 +14,8 @@ import {
   Pay,
   Plan
 } from "@/lib/mockData";
+import { useQueryClient } from "@tanstack/react-query";
+import { authQueryKeys } from "@/entities/auth/api/authQueryKeys";
 
 export default function SetupPage() {
   const router = useRouter();
@@ -47,11 +49,16 @@ export default function SetupPage() {
     }
   }, []);
 
+  const queryClient = useQueryClient();
+
   // Join member mutation
   const joinMutation = useJoinMember({
     onSuccess: () => {
       console.log("✓ 온보딩 완료! /app으로 리다이렉트합니다");
       // 성공 후 /app으로 리다이렉트
+      queryClient.invalidateQueries({
+        queryKey: authQueryKeys.status.list()
+      });
       router.push("/app");
     },
     onError: (error) => {
@@ -105,18 +112,18 @@ export default function SetupPage() {
     }
 
     // 선택한 요금제 (첫 번째만 사용)
-    const selectedTelecom = plans[0].provider;
+    const selectedTelecom = plans[0].id;
 
-    // 카드와 페이 이름을 payments 배열로 변환
-    const paymentNames = [
-      ...cards.map((card) => card.name),
-      ...pays.map((pay) => pay.name)
+    // 카드와 페이 id를 payments 배열로 변환
+    const paymentIds = [
+      ...cards.map((card) => card.id),
+      ...pays.map((pay) => pay.id)
     ];
 
     const setupData = {
       memberId: parseInt(memberId || "0"),
       telecom: selectedTelecom,
-      payments: paymentNames
+      payments: paymentIds
     };
 
     try {

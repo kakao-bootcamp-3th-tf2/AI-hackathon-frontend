@@ -122,10 +122,7 @@ export default function App({ Component, pageProps }: AppProps) {
     apiInstance.useResponseInterceptor(
       (response) => response,
       (error: unknown) => {
-        if (
-          (axios.isAxiosError(error) && error.response?.status === 401) ||
-          error.response?.status === 502
-        ) {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
           console.log("✗ Access token expired or invalid");
 
           // Clear all auth data
