@@ -37,6 +37,7 @@ export default function App({ Component, pageProps }: AppProps) {
    * Handle OAuth callback
    * Extract accessToken from URL fragment and save to localStorage
    * Also set Authorization header for subsequent requests
+   * Redirect based on onboarding status (PENDING -> /auth/setup, ACTIVE -> /app)
    */
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -61,6 +62,13 @@ export default function App({ Component, pageProps }: AppProps) {
       );
 
       console.log("✓ Access token received and stored");
+
+      // Redirect based on onboarding status
+      if (authData.status === "PENDING") {
+        router.replace("/auth/setup");
+      } else if (authData.status === "ACTIVE") {
+        router.replace("/app");
+      }
     } else {
       // Try to restore token from localStorage on app load
       const storedToken = localStorage.getItem("accessToken");
@@ -69,7 +77,7 @@ export default function App({ Component, pageProps }: AppProps) {
         console.log("✓ Access token restored from localStorage");
       }
     }
-  }, []);
+  }, [router]);
 
   const content = <Component {...pageProps} />;
 
