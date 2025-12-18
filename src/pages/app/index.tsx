@@ -7,12 +7,18 @@ import ActionInputDialog from "@/components/features/actions/ActionInputDialog";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/store/useStore";
 import { useToast } from "@/hooks/useToast";
+import { SuggestBenefitWithEventInfo } from "@/entities/googleCalendar";
 
 export default function MainPage() {
   const { selectedRange } = useStore();
   const selectedDate = selectedRange.start;
   const { toast } = useToast();
   const [showActionDialog, setShowActionDialog] = useState(false);
+  // eventId를 key로 하는 Record로 중복 방지 및 효율적 관리
+  const [suggestedBenefitsMap, setSuggestedBenefitsMap] = useState<
+    Record<string, SuggestBenefitWithEventInfo>
+  >({});
+  const [isLoadingBenefits, setIsLoadingBenefits] = useState(false);
 
   const handleAddAction = () => {
     if (!selectedDate) {
@@ -26,6 +32,35 @@ export default function MainPage() {
 
     setShowActionDialog(true);
   };
+
+  const handleEventCreated = (newBenefits: SuggestBenefitWithEventInfo[]) => {
+    console.log("일정 생성 완료, 추천 혜택:", newBenefits);
+    setSuggestedBenefitsMap((prev) => {
+      const updated = { ...prev };
+      newBenefits.forEach((benefit) => {
+        updated[benefit.eventId] = benefit;
+      });
+      return updated;
+    });
+  };
+
+  const handleLoadingChange = (isLoading: boolean) => {
+    setIsLoadingBenefits(isLoading);
+  };
+
+  const handleSuggestedBenefitsUpdate = (newBenefits: SuggestBenefitWithEventInfo[]) => {
+    console.log("AI 추천 혜택 받음:", newBenefits);
+    setSuggestedBenefitsMap((prev) => {
+      const updated = { ...prev };
+      newBenefits.forEach((benefit) => {
+        updated[benefit.eventId] = benefit;
+      });
+      return updated;
+    });
+  };
+
+  // Record를 배열로 변환 (BenefitPanel에 전달용)
+  const suggestedBenefitsArray = Object.values(suggestedBenefitsMap);
 
   return (
     <div className="min-h-screen gradient-hero">
@@ -43,7 +78,10 @@ export default function MainPage() {
 
         <div className="grid gap-6 lg:grid-cols-[1fr,400px]">
           <div className="space-y-4 animate-fade-in [animation-delay:200ms]">
-            <CalendarFeature />
+            <CalendarFeature
+              onSuggestedBenefits={handleSuggestedBenefitsUpdate}
+              onLoadingChange={handleLoadingChange}
+            />
 
             <Button
               onClick={handleAddAction}
@@ -58,7 +96,10 @@ export default function MainPage() {
 
           <aside className="lg:sticky lg:top-24 h-fit animate-slide-in-right">
             <div className="rounded-2xl border border-border/50 bg-card p-6 shadow-card h-[calc(100vh-200px)] lg:h-[600px]">
-              <BenefitPanel />
+              <BenefitPanel
+                suggestedBenefits={suggestedBenefitsArray}
+                isLoading={isLoadingBenefits}
+              />
             </div>
           </aside>
         </div>
@@ -68,6 +109,8 @@ export default function MainPage() {
         open={showActionDialog}
         onOpenChange={setShowActionDialog}
         initialDate={selectedDate || undefined}
+        onEventCreated={handleEventCreated}
+        onLoadingChange={handleLoadingChange}
       />
     </div>
   );

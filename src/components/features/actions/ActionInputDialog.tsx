@@ -9,7 +9,7 @@ import { useActionForm } from "./hooks/useActionForm";
 import { useStore } from "@/store/useStore";
 import { categoryIcons, categoryLabels } from "@/entities/action/constants";
 import { ActionCategory, ActionDateRange } from "@/entities/action/types";
-import { useCreateCalendarEvent } from "@/entities/googleCalendar";
+import { useCreateCalendarEvent, SuggestBenefitWithEventInfo } from "@/entities/googleCalendar";
 
 // Action category를 Google Calendar 카테고리로 변환
 const getCategoryForCalendar = (category: ActionCategory): string => {
@@ -27,18 +27,47 @@ interface ActionInputDialogProps {
   onOpenChange: (open: boolean) => void;
   initialText?: string;
   initialDate?: Date;
+  onEventCreated?: (suggestBenefits: SuggestBenefitWithEventInfo[]) => void;
+  onLoadingChange?: (isLoading: boolean) => void;
 }
 
 export default function ActionInputDialog({
   open,
   onOpenChange,
   initialText = "",
-  initialDate
+  initialDate,
+  onEventCreated,
+  onLoadingChange
 }: ActionInputDialogProps) {
   const { selectedRange, addAction } = useStore();
   const { title, setTitle, category, setCategory, resetForm, isValid } =
     useActionForm(initialText);
-  const createCalendarEventMutation = useCreateCalendarEvent();
+  const createCalendarEventMutation = useCreateCalendarEvent({
+    onSuccess: (eventData) => {
+      console.log("이벤트 생성 성공:", eventData);
+
+      // suggestList가 있으면 부모에 전달
+      if (eventData.suggestList && eventData.suggestList.length > 0) {
+        const suggestBenefit: SuggestBenefitWithEventInfo = {
+          eventId: eventData.eventId || eventData.id.toString(),
+          summary: eventData.summary || eventData.title || "",
+          startAt: eventData.startAt || eventData.startTime || "",
+          endAt: eventData.endAt || eventData.endTime || "",
+          suggestList: eventData.suggestList
+        };
+        onEventCreated?.([suggestBenefit]);
+      }
+      onLoadingChange?.(false);
+    },
+    onError: () => {
+      onLoadingChange?.(false);
+    }
+  });
+
+  // 이벤트 생성 로딩 상태 감지
+  React.useEffect(() => {
+    onLoadingChange?.(createCalendarEventMutation.isPending);
+  }, [createCalendarEventMutation.isPending, onLoadingChange]);
 
   const start = selectedRange.start;
   const end = selectedRange.end;

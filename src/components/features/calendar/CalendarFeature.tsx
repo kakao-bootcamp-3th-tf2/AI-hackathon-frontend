@@ -3,7 +3,7 @@ import { isSameDay, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils/cn";
 import { useStore } from "@/store/useStore";
 import type { DateRange } from "@/store/StoreProvider";
-import { usePrimaryCalendarEvents, useSuggestEvents, GoogleCalendarEvent } from "@/entities/googleCalendar";
+import { usePrimaryCalendarEvents, useSuggestEvents, GoogleCalendarEvent, SuggestBenefitWithEventInfo } from "@/entities/googleCalendar";
 import type { Action } from "@/entities/action/types";
 import { useCalendarNavigation } from "./hooks/useCalendarNavigation";
 import CalendarHeader from "./components/CalendarHeader";
@@ -14,9 +14,11 @@ import CalendarLoadingSpinner from "./components/CalendarLoadingSpinner";
 
 interface CalendarFeatureProps {
   className?: string;
+  onSuggestedBenefits?: (benefits: SuggestBenefitWithEventInfo[]) => void;
+  onLoadingChange?: (isLoading: boolean) => void;
 }
 
-export default function CalendarFeature({ className }: CalendarFeatureProps) {
+export default function CalendarFeature({ className, onSuggestedBenefits, onLoadingChange }: CalendarFeatureProps) {
   const {
     selectedRange,
     selectSingleDate,
@@ -147,7 +149,32 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
   );
 
   // useSuggestEvents 뮤테이션
-  const suggestEventsMutation = useSuggestEvents();
+  const suggestEventsMutation = useSuggestEvents({
+    onSuccess: (data) => {
+      console.log("AI 추천 혜택 받음:", data);
+
+      // 각 응답에서 이벤트 정보와 suggestList를 추출
+      const suggestBenefits = data.map((response) => ({
+        eventId: response.notity.eventId,
+        summary: response.notity.summary,
+        startAt: response.notity.startAt,
+        endAt: response.notity.endAt,
+        suggestList: response.notity.suggestList
+      }));
+
+      console.log("추천 혜택 (이벤트별):", suggestBenefits);
+      onSuggestedBenefits?.(suggestBenefits);
+      onLoadingChange?.(false);
+    },
+    onError: () => {
+      onLoadingChange?.(false);
+    }
+  });
+
+  // AI 추천 로딩 상태 감지
+  React.useEffect(() => {
+    onLoadingChange?.(suggestEventsMutation.isPending);
+  }, [suggestEventsMutation.isPending, onLoadingChange]);
 
   // AI 일정 추천 핸들러
   const handleSuggestEvents = useCallback(async () => {
@@ -212,6 +239,7 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
     setIsDragging(false);
     dragStartRef.current = null;
   }, []);
+
 
   useEffect(() => {
     if (typeof window === "undefined") {

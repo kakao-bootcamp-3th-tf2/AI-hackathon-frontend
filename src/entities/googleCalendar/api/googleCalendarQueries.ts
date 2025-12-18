@@ -22,7 +22,7 @@ import {
   GoogleCalendarCreateEventRequest,
   GoogleCalendarManualUpdateRequest,
   GoogleCalendarSuggestRequest,
-  GoogleCalendarSuggestResponse,
+  GoogleCalendarSuggestResponseItem,
   GoogleCalendarEventDto,
   NotityDto
 } from "../types";
@@ -66,17 +66,9 @@ export const useCreateCalendarEvent = (
     UseMutationOptions<GoogleCalendarEventDto, Error, GoogleCalendarCreateEventRequest>
   >
 ) => {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (request: GoogleCalendarCreateEventRequest) =>
       createCalendarEvent(request),
-    onSuccess: () => {
-      // Invalidate all calendar event queries to fetch fresh data
-      queryClient.invalidateQueries({
-        queryKey: googleCalendarQueryKeys.primary.all
-      });
-    },
     onError: (error) => {
       console.error("Failed to create calendar event:", error);
     },
@@ -120,7 +112,7 @@ export const useManualUpdateEvent = (
 export const useSuggestEvents = (
   mutationOptions?: Partial<
     UseMutationOptions<
-      GoogleCalendarSuggestResponse[],
+      GoogleCalendarSuggestResponseItem[],
       Error,
       GoogleCalendarSuggestRequest
     >
@@ -130,12 +122,6 @@ export const useSuggestEvents = (
 
   return useMutation({
     mutationFn: (request: GoogleCalendarSuggestRequest) => suggestEvents(request),
-    onSuccess: () => {
-      // Invalidate all calendar event queries
-      queryClient.invalidateQueries({
-        queryKey: googleCalendarQueryKeys.primary.all
-      });
-    },
     onError: (error) => {
       console.error("Failed to suggest events:", error);
     },
