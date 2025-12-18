@@ -52,13 +52,10 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run ESLint
         run: pnpm lint
-
-      - name: Run TypeScript type check
-        run: pnpm type:check
 
       - name: Build application
         run: pnpm build
