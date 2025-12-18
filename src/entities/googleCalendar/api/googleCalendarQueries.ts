@@ -73,27 +73,20 @@ export const useCreateCalendarEvent = (
   >
 ) => {
   const queryClient = useQueryClient();
-  const { onSuccess, onError, ...restOptions } = mutationOptions || {};
 
   return useMutation({
     mutationFn: (request: GoogleCalendarCreateEventRequest) =>
       createCalendarEvent(request),
-    ...restOptions,
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       // Invalidate all calendar event queries to fetch fresh data
       queryClient.invalidateQueries({
         queryKey: googleCalendarQueryKeys.primary.all
       });
-
-      // Call external onSuccess if provided
-      onSuccess?.(data, variables, undefined as any);
     },
-    onError: (error, variables) => {
+    onError: (error) => {
       console.error("Failed to create calendar event:", error);
-
-      // Call external onError if provided
-      onError?.(error, variables, undefined as any);
-    }
+    },
+    ...mutationOptions
   });
 };
 
@@ -112,27 +105,20 @@ export const useManualUpdateEvent = (
   >
 ) => {
   const queryClient = useQueryClient();
-  const { onSuccess, onError, ...restOptions } = mutationOptions || {};
 
   return useMutation({
     mutationFn: (request: GoogleCalendarManualUpdateRequest) =>
       manualUpdateEvent(request),
-    ...restOptions,
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       // Invalidate all calendar event queries
       queryClient.invalidateQueries({
         queryKey: googleCalendarQueryKeys.primary.all
       });
-
-      // Call external onSuccess if provided
-      onSuccess?.(data, variables, undefined as any);
     },
-    onError: (error, variables) => {
+    onError: (error) => {
       console.error("Failed to manually update event:", error);
-
-      // Call external onError if provided
-      onError?.(error, variables, undefined as any);
-    }
+    },
+    ...mutationOptions
   });
 };
 
@@ -151,27 +137,20 @@ export const useSuggestEvents = (
   >
 ) => {
   const queryClient = useQueryClient();
-  const { onSuccess, onError, ...restOptions } = mutationOptions || {};
 
   return useMutation({
     mutationFn: (request: GoogleCalendarSuggestRequest) =>
       suggestEvents(request),
-    ...restOptions,
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       // Invalidate all calendar event queries
       queryClient.invalidateQueries({
         queryKey: googleCalendarQueryKeys.primary.all
       });
-
-      // Call external onSuccess if provided
-      onSuccess?.(data, variables, undefined as any);
     },
-    onError: (error, variables) => {
+    onError: (error) => {
       console.error("Failed to suggest events:", error);
-
-      // Call external onError if provided
-      onError?.(error, variables, undefined as any);
-    }
+    },
+    ...mutationOptions
   });
 };
 
@@ -198,25 +177,18 @@ export const useDeleteNotity = (
   mutationOptions?: Partial<UseMutationOptions<void, Error, number>>
 ) => {
   const queryClient = useQueryClient();
-  const { onSuccess, onError, ...restOptions } = mutationOptions || {};
 
   return useMutation({
     mutationFn: (notityId: number) => deleteNotity(notityId),
-    ...restOptions,
-    onSuccess: (data, notityId) => {
+    onSuccess: () => {
       // Invalidate notities list
       queryClient.invalidateQueries({
         queryKey: googleCalendarQueryKeys.notities.all
       });
-
-      // Call external onSuccess if provided
-      onSuccess?.(data, notityId, undefined as any);
     },
-    onError: (error, notityId) => {
+    onError: (error) => {
       console.error("Failed to delete notity:", error);
-
-      // Call external onError if provided
-      onError?.(error, notityId, undefined as any);
-    }
+    },
+    ...mutationOptions
   });
 };

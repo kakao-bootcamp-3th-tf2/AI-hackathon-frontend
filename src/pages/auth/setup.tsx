@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { toast } from "sonner";
 import { useStore } from "@/store/useStore";
@@ -32,11 +32,20 @@ export default function SetupPage() {
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const [hoveredPayId, setHoveredPayId] = useState<string | null>(null);
   const [hoveredPlanId, setHoveredPlanId] = useState<string | null>(null);
+  const [memberId, setMemberId] = useState<string | null>(null);
 
   // Modal states
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [planModalOpen, setPlanModalOpen] = useState(false);
+
+  // Load memberId from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const id = localStorage.getItem("memberId");
+      setMemberId(id);
+    }
+  }, []);
 
   // Join member mutation
   const joinMutation = useJoinMember({
@@ -80,10 +89,10 @@ export default function SetupPage() {
 
   const handleCompleteSetup = async () => {
     // 유효성 검증
-    if (!authStatus?.id) {
-      toast.error("사용자 정보를 불러올 수 없습니다. 다시 로그인해주세요.");
-      return;
-    }
+    // if (!authStatus?.id) {
+    //   toast.error("사용자 정보를 불러올 수 없습니다. 다시 로그인해주세요.");
+    //   return;
+    // }
 
     if (cards.length === 0) {
       toast.error("최소 하나 이상의 카드를 선택해주세요.");
@@ -105,7 +114,7 @@ export default function SetupPage() {
     ];
 
     const setupData = {
-      memberId: parseInt(authStatus.id),
+      memberId: parseInt(memberId || "0"),
       telecom: selectedTelecom,
       payments: paymentNames
     };

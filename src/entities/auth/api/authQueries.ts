@@ -3,7 +3,12 @@
  * TanStack React Query hooks for auth domain
  */
 
-import { useQuery, useMutation, useQueryClient, UseMutationOptions } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  UseMutationOptions
+} from "@tanstack/react-query";
 import { authQueryKeys } from "./authQueryKeys";
 import { refreshToken, getAuthStatus, joinMember } from "./authApi";
 import { AuthTokenResponse, AuthStatusResponse, MemberJoinRequest } from "../types";
@@ -26,15 +31,11 @@ export const useAuthStatus = (options?: { enabled?: boolean }) => {
  * @param mutationOptions - Optional mutation options including onSuccess, onError callbacks
  */
 export const useRefreshToken = (
-  mutationOptions?: Partial<
-    UseMutationOptions<AuthTokenResponse, Error, void>
-  >
+  mutationOptions?: Partial<UseMutationOptions<AuthTokenResponse, Error, void>>
 ) => {
   const queryClient = useQueryClient();
-  const { onSuccess, onError, ...restOptions } = mutationOptions || {};
 
   return useMutation({
-    ...restOptions,
     mutationFn: refreshToken,
     onSuccess: (data: AuthTokenResponse) => {
       // Update auth status cache after successful token refresh
@@ -46,19 +47,14 @@ export const useRefreshToken = (
       if (data.accessToken) {
         localStorage.setItem("accessToken", data.accessToken);
       }
-
-      // Call external onSuccess if provided
-      onSuccess?.(data, undefined as any, undefined as any);
     },
-    onError: (error) => {
+    onError: () => {
       // Clear auth state on failure
       queryClient.removeQueries({
         queryKey: authQueryKeys.status.list()
       });
-
-      // Call external onError if provided
-      onError?.(error, undefined as any, undefined as any);
-    }
+    },
+    ...mutationOptions
   });
 };
 
@@ -68,28 +64,18 @@ export const useRefreshToken = (
  * @param mutationOptions - Optional mutation options including onSuccess, onError callbacks
  */
 export const useJoinMember = (
-  mutationOptions?: Partial<
-    UseMutationOptions<void, Error, MemberJoinRequest>
-  >
+  mutationOptions?: Partial<UseMutationOptions<void, Error, MemberJoinRequest>>
 ) => {
   const queryClient = useQueryClient();
-  const { onSuccess, onError, ...restOptions } = mutationOptions || {};
 
   return useMutation({
-    ...restOptions,
     mutationFn: joinMember,
-    onSuccess: (data, variables) => {
+    onSuccess: () => {
       // Invalidate auth status to reflect ACTIVE status
       queryClient.invalidateQueries({
         queryKey: authQueryKeys.status.list()
       });
-
-      // Call external onSuccess if provided
-      onSuccess?.(data, variables, undefined as any);
     },
-    onError: (error, variables) => {
-      // Call external onError if provided
-      onError?.(error, variables, undefined as any);
-    }
+    ...mutationOptions
   });
 };
