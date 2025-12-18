@@ -3,7 +3,12 @@ import { isSameDay, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils/cn";
 import { useStore } from "@/store/useStore";
 import type { DateRange } from "@/store/StoreProvider";
-import { usePrimaryCalendarEvents, useSuggestEvents, GoogleCalendarEvent, SuggestBenefitWithEventInfo } from "@/entities/googleCalendar";
+import {
+  usePrimaryCalendarEvents,
+  useSuggestEvents,
+  GoogleCalendarEvent,
+  SuggestBenefitWithEventInfo
+} from "@/entities/googleCalendar";
 import type { Action } from "@/entities/action/types";
 import { useCalendarNavigation } from "./hooks/useCalendarNavigation";
 import CalendarHeader from "./components/CalendarHeader";
@@ -18,7 +23,11 @@ interface CalendarFeatureProps {
   onLoadingChange?: (isLoading: boolean) => void;
 }
 
-export default function CalendarFeature({ className, onSuggestedBenefits, onLoadingChange }: CalendarFeatureProps) {
+export default function CalendarFeature({
+  className,
+  onSuggestedBenefits,
+  onLoadingChange
+}: CalendarFeatureProps) {
   const {
     selectedRange,
     selectSingleDate,
@@ -201,7 +210,7 @@ export default function CalendarFeature({ className, onSuggestedBenefits, onLoad
     }
 
     console.log("AI 일정 추천 시작:", eventIds);
-    suggestEventsMutation.mutate({ eventIds });
+    suggestEventsMutation.mutate({ needSuggestList: eventIds });
   }, [selectedRange, getGoogleEventIdsForRange]);
 
   // 이벤트 클릭 핸들러
@@ -254,7 +263,6 @@ export default function CalendarFeature({ className, onSuggestedBenefits, onLoad
     setIsDragging(false);
     dragStartRef.current = null;
   }, []);
-
 
   useEffect(() => {
     if (typeof window === "undefined") {
