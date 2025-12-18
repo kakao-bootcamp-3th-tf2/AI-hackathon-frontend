@@ -1,64 +1,9 @@
 import { addDays } from "date-fns";
-import { ActionCategory } from "@/entities/action/types";
 import { BenefitSource } from "@/entities/benefit/types";
 import { Card } from "@/entities/card/types";
 
 const today = new Date();
 const isoDate = (offset = 0) => addDays(today, offset).toISOString();
-
-export interface ActionApiResponse {
-  id: string;
-  date: string;
-  title: string;
-  category: ActionCategory;
-  description?: string;
-  relatedCardId?: string;
-}
-
-export interface ActionCreateRequest {
-  date: string;
-  title: string;
-  category: ActionCategory;
-  relatedCardId?: string;
-  description?: string;
-}
-
-export const mockActionsResponse: ActionApiResponse[] = [
-  {
-    id: "action-1",
-    date: isoDate(0),
-    title: "택시 결제",
-    category: "payment",
-    description: "출장 이동",
-    relatedCardId: "card-1"
-  },
-  {
-    id: "action-2",
-    date: isoDate(1),
-    title: "영화 관람",
-    category: "dining",
-    relatedCardId: "card-2"
-  },
-  {
-    id: "action-3",
-    date: isoDate(-2),
-    title: "주간 구독료",
-    category: "subscription"
-  }
-];
-
-export const mockCreateActionRequest: ActionCreateRequest = {
-  date: isoDate(3),
-  title: "커피숍 방문",
-  category: "dining",
-  relatedCardId: "card-2",
-  description: "출근 전 커피"
-};
-
-export const mockCreateActionResponse: ActionApiResponse = {
-  id: "action-4",
-  ...mockCreateActionRequest
-};
 
 export interface BenefitApiResponse {
   id: string;

@@ -4,21 +4,20 @@
 
 export interface GoogleCalendarEvent {
   id: string;
-  title: string;
-  description?: string;
-  startTime: string; // ISO-8601
-  endTime: string; // ISO-8601
-  location?: string;
-  attendees?: Array<{
-    email: string;
-    name?: string;
-    responseStatus?: "needsAction" | "declined" | "tentative" | "accepted";
+  summary: string; // 이벤트 제목
+  start: string; // ISO-8601 datetime
+  end: string; // ISO-8601 datetime
+  suggestList: Array<{
+    category?: string;
+    brand?: string;
+    benefit?: string;
   }>;
+  description?: string;
+  location?: string;
 }
 
 export interface GoogleCalendarEventsResponse {
   events: GoogleCalendarEvent[];
-  nextPageToken?: string;
 }
 
 export interface GoogleCalendarCreateEventRequest {

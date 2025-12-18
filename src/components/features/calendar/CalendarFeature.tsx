@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { isSameDay } from "date-fns";
+import { isSameDay, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils/cn";
 import { useStore } from "@/store/useStore";
+import type { DateRange } from "@/store/StoreProvider";
 import { usePrimaryCalendarEvents, GoogleCalendarEvent } from "@/entities/googleCalendar";
 import type { Action } from "@/entities/action/types";
 import { useCalendarNavigation } from "./hooks/useCalendarNavigation";
 import CalendarHeader from "./components/CalendarHeader";
 import CalendarGrid from "./components/CalendarGrid";
 import SelectedDateSummary from "./components/SelectedDateSummary";
+import EventDetailModal from "./components/EventDetailModal";
+import CalendarLoadingSpinner from "./components/CalendarLoadingSpinner";
 
 interface CalendarFeatureProps {
   className?: string;
@@ -21,32 +24,63 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
     getActionsForDate: getLocalActionsForDate,
     getActionsForRange
   } = useStore();
-  const { currentMonth, calendarDays, monthRange, handlePrevMonth, handleNextMonth, goToToday } =
-    useCalendarNavigation();
+  const {
+    currentMonth,
+    calendarDays,
+    monthRange,
+    handlePrevMonth,
+    handleNextMonth,
+    goToToday
+  } = useCalendarNavigation();
+
+  // 이벤트 상세 모달 상태
+  const [selectedEvent, setSelectedEvent] = useState<Action | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Google Calendar API 호출 - 월 범위로 조회
-  const { data: googleCalendarResponse } = usePrimaryCalendarEvents({
+  const {
+    data: googleCalendarResponse,
+    isLoading: googleCalendarLoading,
+    isError: googleCalendarError,
+    error: googleCalendarErrorObj
+  } = usePrimaryCalendarEvents({
     from: monthRange.calendarStartISO,
     to: monthRange.calendarEndISO,
     enabled: true
   });
 
+  // 디버깅용 로깅
+  useEffect(() => {
+    console.log("=== Google Calendar Debug ===");
+    console.log("API URL range:", {
+      from: monthRange.calendarStartISO,
+      to: monthRange.calendarEndISO
+    });
+    console.log("Response data:", googleCalendarResponse);
+    console.log("Loading:", googleCalendarLoading);
+    console.log("Error:", googleCalendarError, googleCalendarErrorObj);
+    console.log("=============================");
+  }, [
+    googleCalendarResponse,
+    googleCalendarLoading,
+    googleCalendarError,
+    googleCalendarErrorObj,
+    monthRange
+  ]);
+
   /**
    * Google Calendar 이벤트를 로컬 Action으로 변환
-   * category는 "other"로 고정 (향후 확장 가능)
+   * category는 "other"로 고정 (나중에 suggestList.contents 추가될 예정)
    */
-  const convertGoogleEventToAction = useCallback(
-    (event: GoogleCalendarEvent): Action => {
-      return {
-        id: `google-${event.id}`,
-        date: new Date(event.startTime),
-        title: event.title,
-        description: event.description,
-        category: "other" // Google Calendar 이벤트는 기본적으로 "other" 카테고리
-      };
-    },
-    []
-  );
+  const convertGoogleEventToAction = useCallback((event: GoogleCalendarEvent): Action => {
+    return {
+      id: `google-${event.id}`,
+      date: new Date(event.start),
+      title: event.summary,
+      description: event.description,
+      category: "other" // Google Calendar 이벤트는 "other" 카테고리로 고정
+    };
+  }, []);
 
   /**
    * 특정 날짜의 Google Calendar 이벤트 조회
@@ -58,12 +92,12 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
 
       return googleCalendarResponse.events
         .filter((event) => {
-          const eventDate = new Date(event.startTime);
+          const eventDate = new Date(event.start);
           return isSameDay(eventDate, date);
         })
         .map(convertGoogleEventToAction);
     },
-    [googleCalendarResponse?.events, convertGoogleEventToAction]
+    [googleCalendarResponse, convertGoogleEventToAction]
   );
 
   /**
@@ -77,6 +111,46 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
     },
     [getLocalActionsForDate, getGoogleEventsForDate]
   );
+
+  /**
+   * 날짜 범위의 로컬 액션과 Google Calendar 이벤트를 병합해서 반환
+   * 시간은 무시하고 일자만 비교
+   */
+  const getCombinedActionsForRange = useCallback(
+    (range: DateRange): Action[] => {
+      const localActions = getActionsForRange(range);
+      console.log("range", range);
+
+      // 날짜 범위 내의 Google 이벤트 필터링
+      if (!googleCalendarResponse?.events) return localActions;
+
+      const googleActions = googleCalendarResponse.events
+        .filter((event) => {
+          const eventDate = startOfDay(new Date(event.start));
+          const rangeStart = startOfDay(range.start!);
+          const rangeEnd = endOfDay(range.end ?? range.start!);
+
+          // 이벤트가 범위 내에 있는지 확인 (일자만 비교, 시간 제외)
+          return eventDate >= rangeStart && eventDate <= rangeEnd;
+        })
+        .map(convertGoogleEventToAction);
+
+      return [...localActions, ...googleActions];
+    },
+    [getActionsForRange, googleCalendarResponse, convertGoogleEventToAction]
+  );
+
+  // 이벤트 클릭 핸들러
+  const handleEventClick = useCallback((event: Action) => {
+    setSelectedEvent(event);
+    setIsModalOpen(true);
+  }, []);
+
+  // 모달 닫기 핸들러
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+    setSelectedEvent(null);
+  }, []);
 
   const handleToday = useCallback(() => {
     goToToday();
@@ -147,19 +221,34 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
         onNextMonth={handleNextMonth}
         onToday={handleToday}
       />
-      <CalendarGrid
-        calendarDays={calendarDays}
-        currentMonth={currentMonth}
-        selectedRange={selectedRange}
-        onSelectDate={handleSelectDay}
-        onDayPointerDown={handleDayPointerDown}
-        onDayPointerEnter={handleDayPointerEnter}
-        onDayPointerUp={handlePointerUp}
-        getActionsForDate={getCombinedActionsForDate}
-      />
+
+      {/* Google Calendar 로딩 중 스피너 표시 */}
+      {googleCalendarLoading ? (
+        <CalendarLoadingSpinner />
+      ) : (
+        <CalendarGrid
+          calendarDays={calendarDays}
+          currentMonth={currentMonth}
+          selectedRange={selectedRange}
+          onSelectDate={handleSelectDay}
+          onDayPointerDown={handleDayPointerDown}
+          onDayPointerEnter={handleDayPointerEnter}
+          onDayPointerUp={handlePointerUp}
+          getActionsForDate={getCombinedActionsForDate}
+        />
+      )}
+
       <SelectedDateSummary
         selectedRange={selectedRange}
-        getActionsForRange={getActionsForRange}
+        getActionsForRange={getCombinedActionsForRange}
+        onEventClick={handleEventClick}
+      />
+
+      {/* 이벤트 상세 모달 */}
+      <EventDetailModal
+        event={selectedEvent}
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
       />
     </div>
   );
