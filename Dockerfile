@@ -28,7 +28,13 @@ RUN pnpm install --no-frozen-lockfile
 # 소스 코드 복사
 COPY . .
 
+# 빌드 인자로 환경 변수 수신
+ARG NODE_ENV
+ARG NEXT_PUBLIC_API_BASE_URL
+
 # Next.js 빌드
+ENV NODE_ENV=$NODE_ENV
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
