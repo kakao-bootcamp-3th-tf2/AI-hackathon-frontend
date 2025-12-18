@@ -45,11 +45,11 @@ export const joinMember = async (payload: MemberJoinRequest) => {
 
 /**
  * Update member information with cards, pays, and plans
- * PUT /api/members/{memberId}
+ * PUT /api/members/profile
  */
 export const updateMember = async (payload: MemberJoinRequest) => {
   const response = await apiInstance.put<APIResponse<void>>(
-    `/api/members/${payload.memberId}`,
+    "/api/members/profile",
     payload
   );
   return response.data.data;
