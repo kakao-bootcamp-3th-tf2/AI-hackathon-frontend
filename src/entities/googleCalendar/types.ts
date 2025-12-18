@@ -45,7 +45,7 @@ export interface GoogleCalendarManualUpdateRequest {
 }
 
 export interface GoogleCalendarSuggestRequest {
-  eventIds: string[];
+  needSuggestList: string[];
 }
 
 export interface GoogleCalendarSuggest {

@@ -1,4 +1,11 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useReducer,
+  useState
+} from "react";
 import { endOfDay, startOfDay } from "date-fns";
 import { Action, ActionFormPayload } from "@/entities/action/types";
 import { defaultActions } from "@/entities/action/data";
@@ -14,12 +21,12 @@ export interface DateRange {
 }
 
 interface StoreContextValue {
-  selectedRange: DateRange;
+  selectedRange: DateRange | null;
   setSelectedRange: (start: Date | null, end: Date | null) => void;
   selectSingleDate: (date: Date) => void;
   primarySelectedDate: Date | null;
   getActionsForDate: (date: Date) => Action[];
-  getActionsForRange: (range: DateRange) => Action[];
+  getActionsForRange: (range: DateRange | null) => Action[];
   addAction: (payload: ActionFormPayload) => void;
   removeAction: (actionId: string) => void;
   cards: Card[];
@@ -36,9 +43,9 @@ interface StoreContextValue {
 
 const StoreContext = createContext<StoreContextValue | null>(null);
 
-const normalizeRange = (start: Date | null, end: Date | null): DateRange => {
+const normalizeRange = (start: Date | null, end: Date | null): DateRange | null => {
   if (!start) {
-    return { start: null, end: null };
+    return null;
   }
 
   const normalizedEnd = end ?? start;
@@ -52,24 +59,47 @@ const normalizeRange = (start: Date | null, end: Date | null): DateRange => {
   return { start: new Date(endTime), end: new Date(startTime) };
 };
 
+interface StoreState {
+  selectedRange: DateRange | null;
+  actions: Action[];
+}
+
+type StoreAction =
+  | { type: "SET_SELECTED_RANGE"; payload: DateRange | null }
+  | { type: "ADD_ACTION"; payload: Action }
+  | { type: "REMOVE_ACTION"; payload: string };
+
+const storeReducer = (state: StoreState, action: StoreAction): StoreState => {
+  switch (action.type) {
+    case "SET_SELECTED_RANGE":
+      return { ...state, selectedRange: action.payload };
+    case "ADD_ACTION":
+      return { ...state, actions: [action.payload, ...state.actions] };
+    case "REMOVE_ACTION":
+      return { ...state, actions: state.actions.filter((item) => item.id !== action.payload) };
+    default:
+      return state;
+  }
+};
+
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [selectedRange, setSelectedRangeState] = useState<DateRange>(() =>
-    normalizeRange(null, null)
-  );
-  const [actions, setActions] = useState<Action[]>(defaultActions);
+  const [state, dispatch] = useReducer(storeReducer, {
+    selectedRange: null,
+    actions: defaultActions
+  });
   const [cards, setCards] = useState<Card[]>(defaultCards);
   const [pays, setPays] = useState<Pay[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
 
   const setSelectedRange = useCallback((start: Date | null, end: Date | null) => {
-    setSelectedRangeState(normalizeRange(start, end));
+    dispatch({ type: "SET_SELECTED_RANGE", payload: normalizeRange(start, end) });
   }, []);
 
   const selectSingleDate = useCallback(
     (date: Date) => {
-      setSelectedRange(date, date);
+      dispatch({ type: "SET_SELECTED_RANGE", payload: normalizeRange(date, date) });
     },
-    [setSelectedRange]
+    []
   );
 
   const addAction = useCallback((payload: ActionFormPayload) => {
@@ -80,11 +110,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       category: payload.category,
       description: payload.description
     };
-    setActions((prev) => [newAction, ...prev]);
+    dispatch({ type: "ADD_ACTION", payload: newAction });
   }, []);
 
   const removeAction = useCallback((actionId: string) => {
-    setActions((prev) => prev.filter((action) => action.id !== actionId));
+    dispatch({ type: "REMOVE_ACTION", payload: actionId });
   }, []);
 
   const addCard = useCallback((newCards: Card[]) => {
@@ -133,28 +163,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     (date: Date) => {
       const targetStart = startOfDay(date);
       const targetEnd = endOfDay(date);
-      return actions.filter((action) => {
+      return state.actions.filter((action) => {
         const { start, end } = getActionInterval(action);
         return start <= targetEnd && end >= targetStart;
       });
     },
-    [actions, getActionInterval]
+    [state.actions, getActionInterval]
   );
 
   const getActionsForRange = useCallback(
-    (range: DateRange) => {
-      if (!range.start) {
-        return [];
+    (range: DateRange | null) => {
+      if (!range?.start) {
+        return state.actions;
       }
       const rangeStart = startOfDay(range.start);
       const rangeEnd = endOfDay(range.end ?? range.start);
 
-      return actions.filter((action) => {
+      return state.actions.filter((action) => {
         const { start, end } = getActionInterval(action);
         return start <= rangeEnd && end >= rangeStart;
       });
     },
-    [actions, getActionInterval]
+    [state.actions, getActionInterval]
   );
 
   const getBenefitsForDate = useCallback(
@@ -165,26 +195,47 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     []
   );
 
-  const value: StoreContextValue = {
-    selectedRange,
-    setSelectedRange,
-    selectSingleDate,
-    primarySelectedDate: selectedRange.start,
-    getActionsForDate,
-    getActionsForRange,
-    addAction,
-    removeAction,
-    cards,
-    addCard,
-    removeCard,
-    pays,
-    addPay,
-    removePay,
-    plans,
-    addPlan,
-    removePlan,
-    getBenefitsForDate
-  };
+  const value = useMemo(
+    () => ({
+      selectedRange: state.selectedRange,
+      setSelectedRange,
+      selectSingleDate,
+      primarySelectedDate: state.selectedRange?.start ?? null,
+      getActionsForDate,
+      getActionsForRange,
+      addAction,
+      removeAction,
+      cards,
+      addCard,
+      removeCard,
+      pays,
+      addPay,
+      removePay,
+      plans,
+      addPlan,
+      removePlan,
+      getBenefitsForDate
+    }),
+    [
+      state.selectedRange,
+      setSelectedRange,
+      selectSingleDate,
+      getActionsForDate,
+      getActionsForRange,
+      addAction,
+      removeAction,
+      cards,
+      addCard,
+      removeCard,
+      pays,
+      addPay,
+      removePay,
+      plans,
+      addPlan,
+      removePlan,
+      getBenefitsForDate
+    ]
+  );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 };

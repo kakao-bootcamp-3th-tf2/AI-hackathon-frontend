@@ -15,6 +15,7 @@ interface BenefitPanelProps {
   suggestedBenefits?: SuggestBenefitWithEventInfo[];
   isLoading?: boolean;
   onEditSuggest?: (eventId: string, suggest: any) => void;
+  deliverAllSuggestedBenefits?: boolean;
 }
 
 interface BenefitPanelContentProps {
@@ -23,16 +24,19 @@ interface BenefitPanelContentProps {
   suggestedBenefits?: SuggestBenefitWithEventInfo[];
   isLoading?: boolean;
   onEditSuggest?: (eventId: string, suggest: any) => void;
+  deliverAllSuggestedBenefits?: boolean;
 }
 
-const BenefitPanelHeader: React.FC<{ range: DateRange; hasSelection: boolean }> = ({
+const BenefitPanelHeader: React.FC<{ range: DateRange | null; hasSelection: boolean }> = ({
   range,
   hasSelection
 }) => {
-  const startLabel = range.start ? format(range.start, "M월 d일", { locale: ko }) : null;
+  const startDate = range?.start;
+  const endDate = range?.end;
+  const startLabel = startDate ? format(startDate, "M월 d일", { locale: ko }) : null;
   const endLabel =
-    range.start && range.end && !isSameDay(range.start, range.end)
-      ? format(range.end, "M월 d일", { locale: ko })
+    startDate && endDate && !isSameDay(startDate, endDate)
+      ? format(endDate, "M월 d일", { locale: ko })
       : null;
 
   const labelText = startLabel
@@ -58,7 +62,8 @@ const BenefitPanelContent: React.FC<BenefitPanelContentProps> = ({
   hasSelection,
   suggestedBenefits = [],
   isLoading = false,
-  onEditSuggest
+  onEditSuggest,
+  deliverAllSuggestedBenefits = false
 }) => {
   const hasSuggestedBenefits = suggestedBenefits.length > 0;
 
@@ -178,27 +183,32 @@ export const BenefitPanel: React.FC<BenefitPanelProps> = ({
   className,
   suggestedBenefits = [],
   isLoading = false,
-  onEditSuggest
+  onEditSuggest,
+  deliverAllSuggestedBenefits = false
 }) => {
   const { selectedRange, getBenefitsForDate } = useStore();
-  const hasSelection = Boolean(selectedRange.start);
-  const benefits = selectedRange.start ? getBenefitsForDate(selectedRange.start) : [];
+  const hasSelection = Boolean(selectedRange?.start);
+  const benefits = selectedRange?.start ? getBenefitsForDate(selectedRange.start) : [];
 
   // 선택한 날짜 범위 내의 추천 혜택만 필터링
   const filteredSuggestedBenefits = useMemo(() => {
-    // suggestedBenefits가 없거나, hasSelection이 없으면 그대로 반환
-    if (suggestedBenefits.length === 0 || !hasSelection) {
+    if (suggestedBenefits.length === 0 || deliverAllSuggestedBenefits) {
       return suggestedBenefits;
     }
 
+    const primaryStart = selectedRange?.start;
+    if (!primaryStart) {
+      return suggestedBenefits;
+    }
+
+    const rangeStart = startOfDay(primaryStart);
+    const rangeEnd = endOfDay(selectedRange?.end ?? primaryStart);
+
     return suggestedBenefits.filter((benefit) => {
       const eventDate = startOfDay(new Date(benefit.startAt));
-      const rangeStart = startOfDay(selectedRange.start!);
-      const rangeEnd = endOfDay(selectedRange.end ?? selectedRange.start!);
-
       return isWithinInterval(eventDate, { start: rangeStart, end: rangeEnd });
     });
-  }, [selectedRange, suggestedBenefits, hasSelection]);
+  }, [selectedRange, suggestedBenefits, deliverAllSuggestedBenefits]);
 
   return (
     <section className={cn("flex flex-col h-full", className)}>
@@ -213,6 +223,7 @@ export const BenefitPanel: React.FC<BenefitPanelProps> = ({
           suggestedBenefits={filteredSuggestedBenefits}
           isLoading={isLoading}
           onEditSuggest={onEditSuggest}
+          deliverAllSuggestedBenefits={deliverAllSuggestedBenefits}
         />
       </div>
     </section>

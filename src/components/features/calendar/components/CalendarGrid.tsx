@@ -36,7 +36,7 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 interface CalendarGridProps {
   calendarDays: Date[];
   currentMonth: Date;
-  selectedRange: DateRange;
+  selectedRange: DateRange | null;
   onSelectDate: (date: Date) => void;
   getActionsForDate: (date: Date) => Action[];
   onDayPointerDown: (date: Date) => void;
@@ -79,12 +79,13 @@ export default function CalendarGrid({
           const isToday = isSameDay(day, new Date());
           const dayOfWeek = day.getDay();
 
-          const { start, end } = selectedRange;
-          const normalizedEnd = end ?? start;
-          const rangeIncludesDay =
-            start && normalizedEnd && isWithinInterval(day, { start, end: normalizedEnd });
-          const isRangeStart = start && isSameDay(day, start);
-          const isRangeEnd = normalizedEnd && isSameDay(day, normalizedEnd);
+        const rangeStart = selectedRange?.start ?? null;
+        const rangeEnd = selectedRange?.end ?? rangeStart;
+        const hasRange = Boolean(rangeStart && rangeEnd);
+        const rangeIncludesDay =
+          hasRange && isWithinInterval(day, { start: rangeStart!, end: rangeEnd! });
+        const isRangeStart = hasRange && isSameDay(day, rangeStart!);
+        const isRangeEnd = hasRange && rangeEnd && isSameDay(day, rangeEnd);
 
           const isRangeBorder = isRangeStart || isRangeEnd;
 
