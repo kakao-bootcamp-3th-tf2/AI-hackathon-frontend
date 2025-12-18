@@ -220,6 +220,22 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
         />
       )}
 
+      {/* Google Calendar 로딩 중 스피너 표시 */}
+      {googleCalendarLoading ? (
+        <CalendarLoadingSpinner />
+      ) : (
+        <CalendarGrid
+          calendarDays={calendarDays}
+          currentMonth={currentMonth}
+          selectedRange={selectedRange}
+          onSelectDate={handleSelectDay}
+          onDayPointerDown={handleDayPointerDown}
+          onDayPointerEnter={handleDayPointerEnter}
+          onDayPointerUp={handlePointerUp}
+          getActionsForDate={getCombinedActionsForDate}
+        />
+      )}
+
       <SelectedDateSummary
         selectedRange={selectedRange}
         getActionsForRange={getCombinedActionsForRange}

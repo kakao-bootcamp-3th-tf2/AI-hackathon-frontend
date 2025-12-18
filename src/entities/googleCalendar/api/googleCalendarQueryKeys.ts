@@ -34,7 +34,6 @@ export const googleCalendarQueryKeys = {
   notities: {
     all: ["googleCalendar", "notities"] as const,
     list: () => [...googleCalendarQueryKeys.notities.all, "list"] as const,
-    detail: (id: number) =>
-      [...googleCalendarQueryKeys.notities.all, { id }] as const
+    detail: (id: number) => [...googleCalendarQueryKeys.notities.all, { id }] as const
   }
 } as const;

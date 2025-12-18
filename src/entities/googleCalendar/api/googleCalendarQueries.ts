@@ -40,9 +40,7 @@ interface UsePrimaryCalendarEventsOptions {
  * @param params - Query parameters (from, to dates in ISO-8601 format)
  * @param options - Query options
  */
-export const usePrimaryCalendarEvents = (
-  params: UsePrimaryCalendarEventsOptions
-) => {
+export const usePrimaryCalendarEvents = (params: UsePrimaryCalendarEventsOptions) => {
   const { from, to, enabled = true } = params;
 
   return useQuery({
@@ -65,11 +63,7 @@ export const usePrimaryCalendarEvents = (
  */
 export const useCreateCalendarEvent = (
   mutationOptions?: Partial<
-    UseMutationOptions<
-      GoogleCalendarEventDto,
-      Error,
-      GoogleCalendarCreateEventRequest
-    >
+    UseMutationOptions<GoogleCalendarEventDto, Error, GoogleCalendarCreateEventRequest>
   >
 ) => {
   const queryClient = useQueryClient();
@@ -97,11 +91,7 @@ export const useCreateCalendarEvent = (
  */
 export const useManualUpdateEvent = (
   mutationOptions?: Partial<
-    UseMutationOptions<
-      GoogleCalendarEventDto,
-      Error,
-      GoogleCalendarManualUpdateRequest
-    >
+    UseMutationOptions<GoogleCalendarEventDto, Error, GoogleCalendarManualUpdateRequest>
   >
 ) => {
   const queryClient = useQueryClient();
@@ -139,8 +129,7 @@ export const useSuggestEvents = (
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: GoogleCalendarSuggestRequest) =>
-      suggestEvents(request),
+    mutationFn: (request: GoogleCalendarSuggestRequest) => suggestEvents(request),
     onSuccess: () => {
       // Invalidate all calendar event queries
       queryClient.invalidateQueries({

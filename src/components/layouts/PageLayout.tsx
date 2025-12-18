@@ -18,9 +18,7 @@ export default function PageLayout({ children }: PageLayoutProps) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <div className="flex-1">
-        {children}
-      </div>
+      <div className="flex-1">{children}</div>
 
       <nav
         aria-label="하단 네비게이션"

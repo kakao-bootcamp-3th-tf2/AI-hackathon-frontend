@@ -1,0 +1,145 @@
+name: CI/CD Pipeline
+
+concurrency:
+  group: deployment
+  cancel-in-progress: true
+
+on:
+  # PR 생성/업데이트 시 검증만 수행
+  pull_request:
+    branches:
+      - main
+      - dev
+    types: [opened, synchronize, reopened]
+
+  # dev 브랜치 푸시 시 검증 + 배포
+  push:
+    branches:
+      - main
+
+  # 수동 실행 (환경/브랜치/버전 선택 가능)
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'dev'
+        type: string
+      version:
+        description: 'Version tag (optional, e.g., v1.0.0)'
+        required: false
+        type: string
+
+jobs:
+  # 검증 작업 (모든 트리거에서 실행)
+  validate:
+    name: Lint, Type Check & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm lint
+
+      - name: Build application
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+        run: pnpm build
+
+      - name: Upload build artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: .next/
+          retention-days: 7
+
+  # 배포 작업 (PR이 아닐 때만 실행)
+  deploy:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:latest
+          cache-from: type=registry,ref=${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:buildcache
+          cache-to: type=registry,ref=${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:buildcache,mode=max
+          build-args: |
+            NODE_ENV=production
+            NEXT_PUBLIC_API_BASE_URL=${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.APP_INSTANCE_IP }} >> ~/.ssh/known_hosts
+
+      - name: Transfer docker-compose file
+        run: |
+          scp -i ~/.ssh/id_rsa docker-compose.frontend.yaml ubuntu@${{ secrets.APP_INSTANCE_IP }}:~/docker-compose.frontend.yaml
+
+      - name: Deploy with docker-compose
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.APP_INSTANCE_IP }} << 'EOF'
+          cd ~
+          export FRONTEND_DOCKER_IMAGE=${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}
+          docker compose -f docker-compose.frontend.yaml pull
+          docker compose -f docker-compose.frontend.yaml up -d
+          EOF
+
+      - name: Deployment summary
+        run: |
+          echo "### Deployment Summary :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit SHA:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "**Version:** ${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Docker Image:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment Target:**" >> $GITHUB_STEP_SUMMARY
+          echo "- IP: ${{ secrets.APP_INSTANCE_IP }}" >> $GITHUB_STEP_SUMMARY
+          echo "- User: ubuntu" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: Deployed with docker-compose" >> $GITHUB_STEP_SUMMARY

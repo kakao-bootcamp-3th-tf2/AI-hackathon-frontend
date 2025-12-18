@@ -24,17 +24,16 @@ interface FetchCalendarEventsParams {
  * Fetch events from primary Google Calendar
  * GET /api/calendar/events
  */
-export const fetchPrimaryCalendarEvents = async (
-  params: FetchCalendarEventsParams
-) => {
-  const response = await apiInstance.get<
-    APIResponse<GoogleCalendarEventsResponse>
-  >("/api/calendar/events", {
-    params: {
-      from: params.from,
-      to: params.to
+export const fetchPrimaryCalendarEvents = async (params: FetchCalendarEventsParams) => {
+  const response = await apiInstance.get<APIResponse<GoogleCalendarEventsResponse>>(
+    "/api/calendar/events",
+    {
+      params: {
+        from: params.from,
+        to: params.to
+      }
     }
-  });
+  );
   return response.data.data;
 };
 
@@ -42,9 +41,7 @@ export const fetchPrimaryCalendarEvents = async (
  * Create a new calendar event with AI-recommended benefits
  * POST /api/calendar/events
  */
-export const createCalendarEvent = async (
-  request: GoogleCalendarCreateEventRequest
-) => {
+export const createCalendarEvent = async (request: GoogleCalendarCreateEventRequest) => {
   const response = await apiInstance.post<APIResponse<GoogleCalendarEventDto>>(
     "/api/calendar/events",
     request
@@ -56,9 +53,7 @@ export const createCalendarEvent = async (
  * Manually overwrite event details
  * PUT /api/calendar/events/manual
  */
-export const manualUpdateEvent = async (
-  request: GoogleCalendarManualUpdateRequest
-) => {
+export const manualUpdateEvent = async (request: GoogleCalendarManualUpdateRequest) => {
   const response = await apiInstance.put<APIResponse<GoogleCalendarEventDto>>(
     "/api/calendar/events/manual",
     request
@@ -71,9 +66,10 @@ export const manualUpdateEvent = async (
  * PATCH /api/calendar/events/suggest
  */
 export const suggestEvents = async (request: GoogleCalendarSuggestRequest) => {
-  const response = await apiInstance.patch<
-    APIResponse<GoogleCalendarSuggestResponse[]>
-  >("/api/calendar/events/suggest", request);
+  const response = await apiInstance.patch<APIResponse<GoogleCalendarSuggestResponse[]>>(
+    "/api/calendar/events/suggest",
+    request
+  );
   return response.data.data;
 };
 
