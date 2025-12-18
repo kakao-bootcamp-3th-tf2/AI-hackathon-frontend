@@ -90,8 +90,8 @@ export default function ActionInputDialog({
     onLoadingChange?.(createCalendarEventMutation.isPending);
   }, [createCalendarEventMutation.isPending, onLoadingChange]);
 
-  const start = selectedRange.start;
-  const end = selectedRange.end;
+  const start = selectedRange?.start ?? null;
+  const end = selectedRange?.end ?? null;
   const rangeToSubmit: ActionDateRange | undefined = start
     ? { start, end: end ?? start }
     : undefined;

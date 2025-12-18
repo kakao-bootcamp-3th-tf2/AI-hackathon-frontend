@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { isSameDay, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils/cn";
 import { useStore } from "@/store/useStore";
@@ -9,6 +10,7 @@ import {
   GoogleCalendarEvent,
   SuggestBenefitWithEventInfo
 } from "@/entities/googleCalendar";
+import { useSuggestNotification } from "@/store/suggestions/SuggestNotificationProvider";
 import type { Action } from "@/entities/action/types";
 import { useCalendarNavigation } from "./hooks/useCalendarNavigation";
 import CalendarHeader from "./components/CalendarHeader";
@@ -16,6 +18,8 @@ import CalendarGrid from "./components/CalendarGrid";
 import SelectedDateSummary from "./components/SelectedDateSummary";
 import EventDetailModal from "./components/EventDetailModal";
 import CalendarLoadingSpinner from "./components/CalendarLoadingSpinner";
+import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 
 interface CalendarFeatureProps {
   className?: string;
@@ -35,6 +39,7 @@ export default function CalendarFeature({
     getActionsForDate: getLocalActionsForDate,
     getActionsForRange
   } = useStore();
+  const selectedDate = selectedRange?.start ?? null;
   const {
     currentMonth,
     calendarDays,
@@ -47,6 +52,9 @@ export default function CalendarFeature({
   // 이벤트 상세 모달 상태
   const [selectedEvent, setSelectedEvent] = useState<Action | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
+  const [pendingEventIds, setPendingEventIds] = useState<string[]>([]);
+  const { setNotifications } = useSuggestNotification();
 
   // Google Calendar API 호출 - 월 범위로 조회
   const {
@@ -123,15 +131,15 @@ export default function CalendarFeature({
    * 시간은 무시하고 일자만 비교
    */
   const getCombinedActionsForRange = useCallback(
-    (range: DateRange): Action[] => {
+    (range: DateRange | null): Action[] => {
       const localActions = getActionsForRange(range);
-      console.log("range", range);
 
-      // 날짜 범위 내의 Google 이벤트 필터링
       if (!googleCalendarResponse?.events) return localActions;
 
-      const rangeStart = startOfDay(range.start!);
-      const rangeEnd = endOfDay(range.end ?? range.start!);
+      const fallbackStart = new Date(monthRange.calendarStartISO);
+      const fallbackEnd = new Date(monthRange.calendarEndISO);
+      const rangeStart = startOfDay(range?.start ?? fallbackStart);
+      const rangeEnd = endOfDay(range?.end ?? range?.start ?? fallbackEnd);
 
       const googleActions = googleCalendarResponse.events
         .map(convertGoogleEventToAction)
@@ -142,7 +150,7 @@ export default function CalendarFeature({
 
       return [...localActions, ...googleActions];
     },
-    [getActionsForRange, googleCalendarResponse, convertGoogleEventToAction]
+    [getActionsForRange, googleCalendarResponse, convertGoogleEventToAction, monthRange]
   );
 
   /**
@@ -150,11 +158,13 @@ export default function CalendarFeature({
    * Google 이벤트는 id가 "google-"로 시작함
    */
   const getGoogleEventIdsForRange = useCallback(
-    (range: DateRange): string[] => {
+    (range: DateRange | null): string[] => {
       if (!googleCalendarResponse?.events) return [];
 
-      const rangeStart = startOfDay(range.start!);
-      const rangeEnd = endOfDay(range.end ?? range.start!);
+      const fallbackStart = new Date(monthRange.calendarStartISO);
+      const fallbackEnd = new Date(monthRange.calendarEndISO);
+      const rangeStart = startOfDay(range?.start ?? fallbackStart);
+      const rangeEnd = endOfDay(range?.end ?? range?.start ?? fallbackEnd);
 
       const googleEventIds = googleCalendarResponse.events
         .map((event) => ({
@@ -169,7 +179,7 @@ export default function CalendarFeature({
 
       return googleEventIds;
     },
-    [googleCalendarResponse, convertGoogleEventToAction, getActionBounds]
+    [googleCalendarResponse, convertGoogleEventToAction, getActionBounds, monthRange]
   );
 
   // useSuggestEvents 뮤테이션
@@ -187,6 +197,7 @@ export default function CalendarFeature({
       }));
 
       console.log("추천 혜택 (이벤트별):", suggestBenefits);
+      setNotifications(suggestBenefits);
       onSuggestedBenefits?.(suggestBenefits);
       onLoadingChange?.(false);
     },
@@ -201,7 +212,25 @@ export default function CalendarFeature({
   }, [suggestEventsMutation.isPending, onLoadingChange]);
 
   // AI 일정 추천 핸들러
-  const handleSuggestEvents = useCallback(async () => {
+  const handleCancelSuggestEvents = useCallback(() => {
+    setIsSuggestModalOpen(false);
+    setPendingEventIds([]);
+  }, []);
+
+  const handleConfirmSuggestEvents = useCallback(() => {
+    if (pendingEventIds.length === 0) {
+      handleCancelSuggestEvents();
+      return;
+    }
+
+    setIsSuggestModalOpen(false);
+    const eventIds = pendingEventIds;
+    setPendingEventIds([]);
+    console.log("AI 일정 추천 시작:", eventIds);
+    suggestEventsMutation.mutate({ needSuggestList: eventIds });
+  }, [pendingEventIds, suggestEventsMutation, handleCancelSuggestEvents]);
+
+  const handleSuggestEvents = useCallback(() => {
     const eventIds = getGoogleEventIdsForRange(selectedRange);
 
     if (eventIds.length === 0) {
@@ -209,8 +238,8 @@ export default function CalendarFeature({
       return;
     }
 
-    console.log("AI 일정 추천 시작:", eventIds);
-    suggestEventsMutation.mutate({ needSuggestList: eventIds });
+    setPendingEventIds(eventIds);
+    setIsSuggestModalOpen(true);
   }, [selectedRange, getGoogleEventIdsForRange]);
 
   // 이벤트 클릭 핸들러
@@ -325,6 +354,35 @@ export default function CalendarFeature({
         isOpen={isModalOpen}
         onClose={handleCloseModal}
       />
+      <Modal
+        open={isSuggestModalOpen}
+        onClose={handleCancelSuggestEvents}
+        title="AI 추천 요청"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            선택한 일정 {pendingEventIds.length}건에 대해 AI 추천 혜택을 요청하시겠습니까?
+          </p>
+          <p className="text-xs text-muted-foreground">
+            확인 시 AI 추천 API를 호출하여 결과를 반영합니다.
+          </p>
+        </div>
+        <div className="flex items-center justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={handleCancelSuggestEvents}>
+            취소
+          </Button>
+          <Button
+            onClick={handleConfirmSuggestEvents}
+            disabled={suggestEventsMutation.isPending}
+            className="gap-2"
+          >
+            {suggestEventsMutation.isPending && (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
+            {suggestEventsMutation.isPending ? "요청 중..." : "확인"}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

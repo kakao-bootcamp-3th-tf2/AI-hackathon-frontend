@@ -8,8 +8,8 @@ import type { Action } from "@/entities/action/types";
 import type { DateRange } from "@/store/StoreProvider";
 
 interface SelectedDateSummaryProps {
-  selectedRange: DateRange;
-  getActionsForRange: (range: DateRange) => Action[];
+  selectedRange: DateRange | null;
+  getActionsForRange: (range: DateRange | null) => Action[];
   onEventClick?: (event: Action) => void;
   onSuggestEvents?: () => void;
   isLoadingSuggest?: boolean;
@@ -24,22 +24,22 @@ export default function SelectedDateSummary({
 }: SelectedDateSummaryProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  if (!selectedRange.start) {
-    return null;
-  }
-
-  console.log(getActionsForRange(selectedRange));
-
   const actions = getActionsForRange(selectedRange);
-  const rangeEnd = selectedRange.end ?? selectedRange.start;
-  const isSingleDay = isSameDay(selectedRange.start, rangeEnd);
-  const title = isSingleDay
-    ? format(selectedRange.start, "yyyy년 M월 d일 (EEEE)", { locale: ko })
-    : `${format(selectedRange.start, "yyyy년 M월 d일", { locale: ko })} ~ ${format(
-        rangeEnd,
-        "yyyy년 M월 d일",
-        { locale: ko }
-      )}`;
+  let title: string;
+  const rangeStart = selectedRange?.start;
+  if (rangeStart) {
+    const rangeEnd = selectedRange?.end ?? rangeStart;
+    const isSingleDay = isSameDay(rangeStart, rangeEnd);
+    title = isSingleDay
+      ? format(rangeStart, "yyyy년 M월 d일 (EEEE)", { locale: ko })
+      : `${format(rangeStart, "yyyy년 M월 d일", { locale: ko })} ~ ${format(
+          rangeEnd,
+          "yyyy년 M월 d일",
+          { locale: ko }
+        )}`;
+  } else {
+    title = "전체 일정";
+  }
 
   // Google Calendar 이벤트 여부 확인 (id가 "google-"로 시작)
   const hasGoogleEvents = actions.some((action) => action.id.startsWith("google-"));
@@ -70,17 +70,15 @@ export default function SelectedDateSummary({
       {actions.length > 0 ? (
         <>
           {/* 토글 버튼 - 항상 표시 */}
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full mb-4 py-3 px-4 text-sm text-muted-foreground rounded-lg border border-border/50 hover:bg-card/50 hover:border-border transition-colors cursor-pointer flex items-center justify-between"
-          >
-            <span>{actions.length}개의 일정이 있습니다</span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform ${
-                isExpanded ? "rotate-180" : ""
-              }`}
-            />
-          </button>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full mb-4 py-3 px-4 text-sm text-muted-foreground rounded-lg border border-border/50 hover:bg-card/50 hover:border-border transition-colors cursor-pointer flex items-center justify-between"
+      >
+        <span>{actions.length}개의 일정이 있습니다</span>
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+        />
+      </button>
 
           {/* 일정 리스트 - 펼쳐졌을 때만 표시 */}
           {isExpanded && (

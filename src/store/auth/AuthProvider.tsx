@@ -1,4 +1,14 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef
+} from "react";
+import { useRouter } from "next/router";
+import httpClient, { AuthRedirectFragment } from "@/lib/api/httpClient";
 
 interface AuthContextValue {
   isAuthenticated: boolean;
@@ -7,75 +17,122 @@ interface AuthContextValue {
 }
 
 const STORAGE_KEY = "ai-hackathon:isAuthenticated";
-const ACCESS_TOKEN_KEY = "accessToken";
-const COOKIE_NAME = "ai-hackathon:auth-token";
+const MEMBER_ID_STORAGE_KEY = "memberId";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
+const MEMBER_ID_COOKIE = "ai-hackathon:memberId";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const setCookie = (token: string) => {
-  if (typeof document === "undefined") return;
-  const expires = new Date();
-  expires.setSeconds(expires.getSeconds() + COOKIE_MAX_AGE_SECONDS);
-  document.cookie = `${COOKIE_NAME}=${encodeURIComponent(token)}; path=/; expires=${expires.toUTCString()}; SameSite=Strict`;
+interface AuthState {
+  isAuthenticated: boolean;
+}
+
+type AuthAction = { type: "SET_AUTHENTICATED"; payload: boolean };
+
+const authReducer = (state: AuthState, action: AuthAction): AuthState => {
+  switch (action.type) {
+    case "SET_AUTHENTICATED":
+      return { ...state, isAuthenticated: action.payload };
+    default:
+      return state;
+  }
 };
 
-const clearCookie = () => {
-  if (typeof document === "undefined") return;
-  document.cookie = `${COOKIE_NAME}=; path=/; max-age=0; SameSite=Strict`;
+const getInitialState = (): AuthState => ({
+  isAuthenticated: false
+});
+
+const syncMemberCookie = () => {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return;
+  }
+  const memberId = window.localStorage.getItem(MEMBER_ID_STORAGE_KEY);
+  if (!memberId) {
+    return;
+  }
+  const expires = new Date();
+  expires.setSeconds(expires.getSeconds() + COOKIE_MAX_AGE_SECONDS);
+  document.cookie = `${MEMBER_ID_COOKIE}=${encodeURIComponent(memberId)}; path=/; expires=${expires.toUTCString()}; SameSite=Strict`;
+};
+
+const setIsAuthenticatedFlag = (value: boolean) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(STORAGE_KEY, value ? "true" : "false");
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const router = useRouter();
+  const [state, dispatch] = useReducer(authReducer, undefined, getInitialState);
+  const redirectRef = useRef<AuthRedirectFragment | null>(null);
+  const handledRedirectRef = useRef(false);
+
+  if (redirectRef.current === null) {
+    redirectRef.current = httpClient.consumeRedirectData();
+  }
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    const unsubscribe = httpClient.onAccessTokenChange((token) => {
+      dispatch({ type: "SET_AUTHENTICATED", payload: Boolean(token) });
+      setIsAuthenticatedFlag(Boolean(token));
+      if (token) {
+        syncMemberCookie();
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!router.isReady || handledRedirectRef.current) {
       return;
     }
 
-    // Check for accessToken first (from OAuth callback)
-    const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
-    const storedValue = window.localStorage.getItem(STORAGE_KEY);
-
-    if (accessToken || storedValue === "true") {
-      const handle = window.setTimeout(() => {
-        setIsAuthenticated(true);
-        // Store actual token in cookie for middleware validation
-        if (accessToken) {
-          setCookie(accessToken);
-        }
-      }, 0);
-
-      return () => {
-        window.clearTimeout(handle);
-      };
+    const redirectData = redirectRef.current;
+    if (!redirectData) {
+      return;
     }
-  }, []);
+
+    handledRedirectRef.current = true;
+
+    if (redirectData.status === "PENDING") {
+      if (router.pathname !== "/auth/setup") {
+        router.replace("/auth/setup");
+      }
+      return;
+    }
+
+    if (router.pathname !== "/app") {
+      router.replace("/app");
+    }
+  }, [router]);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (state.isAuthenticated && router.pathname === "/auth/login") {
+      router.replace("/app");
+    }
+  }, [router, state.isAuthenticated]);
 
   const login = useCallback(() => {
-    setIsAuthenticated(true);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, "true");
-      // Get accessToken from localStorage and store in cookie
-      const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
-      if (accessToken) {
-        setCookie(accessToken);
-      }
-    }
+    dispatch({ type: "SET_AUTHENTICATED", payload: true });
+    setIsAuthenticatedFlag(true);
   }, []);
 
   const logout = useCallback(() => {
-    setIsAuthenticated(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(STORAGE_KEY);
-      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-      window.localStorage.removeItem("memberId");
-      window.localStorage.removeItem("onboardingStatus");
-      clearCookie();
-    }
-  }, []);
+    httpClient.removeAuthorizationHeader();
+    setIsAuthenticatedFlag(false);
+    router.replace("/auth/login");
+  }, [router]);
 
-  const value = useMemo(() => ({ isAuthenticated, login, logout }), [isAuthenticated, login, logout]);
+  const value = useMemo(
+    () => ({
+      isAuthenticated: state.isAuthenticated,
+      login,
+      logout
+    }),
+    [login, logout, state.isAuthenticated]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
