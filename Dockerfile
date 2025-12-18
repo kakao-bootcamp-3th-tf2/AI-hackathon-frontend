@@ -22,8 +22,9 @@ WORKDIR /app
 # 의존성 파일 복사
 COPY package.json pnpm-lock.yaml ./
 
-# 개발 의존성 포함 전체 설치
-RUN pnpm install --no-frozen-lockfile
+# 개발 의존성 포함 전체 설치 (pnpm store 캐시 마운트)
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --no-frozen-lockfile
 
 # 소스 코드 복사
 COPY . .
@@ -32,11 +33,12 @@ COPY . .
 ARG NODE_ENV
 ARG NEXT_PUBLIC_API_BASE_URL
 
-# Next.js 빌드
+# Next.js 빌드 (Next.js 캐시 마운트)
 ENV NODE_ENV=$NODE_ENV
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm build
+RUN --mount=type=cache,id=nextjs,target=/app/.next/cache \
+    pnpm build
 
 # run
 FROM node:20-alpine AS runner

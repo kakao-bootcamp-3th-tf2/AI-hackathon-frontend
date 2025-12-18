@@ -33,7 +33,7 @@ on:
 jobs:
   # 검증 작업 (모든 트리거에서 실행)
   validate:
-    name: Lint, Type Check & Build
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
@@ -54,24 +54,37 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      # Next.js 빌드 캐시 복원
+      - name: Restore Next.js cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx', '!node_modules/**') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
+            ${{ runner.os }}-nextjs-
+
       - name: Build application
         env:
           NODE_ENV: production
           NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
         run: pnpm build
 
+      # 빌드 결과물을 deploy 잡에서 재사용하기 위해 업로드
       - name: Upload build artifacts
-        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: build-output
-          path: .next/
-          retention-days: 7
+          path: |
+            .next/
+            public/
+          retention-days: 1
 
   # 배포 작업 (PR이 아닐 때만 실행)
   deploy:
     name: Build and Push Docker Image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04-arm  # 네이티브 ARM64 러너 (배포 환경과 동일)
     needs: validate
     if: github.event_name != 'pull_request'
 
@@ -96,7 +109,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           tags: ${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:latest
           cache-from: type=registry,ref=${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:buildcache
           cache-to: type=registry,ref=${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:buildcache,mode=max
