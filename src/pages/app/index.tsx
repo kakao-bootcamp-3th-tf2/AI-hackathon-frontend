@@ -8,7 +8,7 @@ import ActionInputDialog from "@/components/features/actions/ActionInputDialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/store/auth/AuthProvider";
 import { useStore } from "@/store/useStore";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 
 export default function MainPage() {
   const { selectedRange } = useStore();
