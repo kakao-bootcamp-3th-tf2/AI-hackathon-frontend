@@ -9,7 +9,6 @@ import { useActionForm } from "./hooks/useActionForm";
 import { useStore } from "@/store/useStore";
 import { categoryIcons, categoryLabels } from "@/entities/action/constants";
 import { ActionCategory, ActionDateRange } from "@/entities/action/types";
-import { ko } from "date-fns/locale";
 
 interface ActionInputDialogProps {
   open: boolean;
@@ -71,7 +70,7 @@ export default function ActionInputDialog({
   };
 
   return (
-    <Modal open={open} onClose={handleClose} title="행동 추가">
+    <Modal open={open} onClose={handleClose} title="일정 추가">
       <form className="space-y-4 py-2" onSubmit={handleSubmit}>
         <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
           <CalendarIcon className="h-4 w-4" />
@@ -83,10 +82,10 @@ export default function ActionInputDialog({
           )}
         </div>
 
-        <FormField label="내용" htmlFor="action-title">
+        <FormField label="브랜드" htmlFor="action-title">
           <Input
             id="action-title"
-            placeholder="예: 스타벅스 결제, 영화 예매"
+            placeholder="예: 스타벅스, 메가박스"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             autoFocus
