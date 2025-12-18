@@ -4,7 +4,7 @@
  */
 
 import { apiInstance } from "@/shared/api/instance";
-import { AuthTokenResponse, AuthStatusResponse, APIResponse } from "../types";
+import { AuthTokenResponse, AuthStatusResponse, APIResponse, MemberJoinRequest } from "../types";
 
 /**
  * Refresh Access Token using Refresh Token (from HttpOnly cookie)
@@ -24,6 +24,18 @@ export const refreshToken = async () => {
 export const getAuthStatus = async () => {
   const response = await apiInstance.get<APIResponse<AuthStatusResponse>>(
     "/api/auth/status"
+  );
+  return response.data.data;
+};
+
+/**
+ * Complete member onboarding with cards, pays, and plans
+ * POST /api/members/join
+ */
+export const joinMember = async (payload: MemberJoinRequest) => {
+  const response = await apiInstance.post<APIResponse<void>>(
+    "/api/members/join",
+    payload
   );
   return response.data.data;
 };

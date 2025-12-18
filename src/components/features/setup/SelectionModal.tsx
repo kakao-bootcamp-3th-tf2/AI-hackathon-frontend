@@ -17,6 +17,7 @@ interface SelectionModalProps<T extends SelectionOption> {
   displayKey?: keyof T;
   subtitleKey?: keyof T;
   initialSelectedIds?: string[];
+  mode?: "multi" | "single"; // "multi": 여러 개 선택, "single": 하나만 선택
 }
 
 export const SelectionModal = <T extends SelectionOption>({
@@ -27,7 +28,8 @@ export const SelectionModal = <T extends SelectionOption>({
   options,
   displayKey = "name" as keyof T,
   subtitleKey,
-  initialSelectedIds = []
+  initialSelectedIds = [],
+  mode = "multi"
 }: SelectionModalProps<T>) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string>("");
@@ -41,11 +43,20 @@ export const SelectionModal = <T extends SelectionOption>({
 
   const handleToggle = (id: string) => {
     const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
+
+    if (mode === "single") {
+      // Single select mode: 새로 선택한 항목만 유지
+      newSelected.clear();
       newSelected.add(id);
+    } else {
+      // Multi select mode: 토글
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+      } else {
+        newSelected.add(id);
+      }
     }
+
     setSelectedIds(newSelected);
     setError("");
   };
@@ -75,18 +86,18 @@ export const SelectionModal = <T extends SelectionOption>({
       <div className="space-y-4">
         {/* Options List */}
         <div className="space-y-3 max-h-96 overflow-y-auto">
-          {options.map((option) => (
-            <label
-              key={option.id}
-              className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={selectedIds.has(option.id)}
-                onChange={() => handleToggle(option.id)}
-                className="w-4 h-4 rounded border-border"
-              />
-              <div className="flex-1 min-w-0">
+          {options.map((option) => {
+            const isSelected = selectedIds.has(option.id);
+            return (
+              <div
+                key={option.id}
+                onClick={() => handleToggle(option.id)}
+                className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                  isSelected
+                    ? "border-primary bg-primary/10"
+                    : "border-border/50 hover:border-border hover:bg-muted/30"
+                }`}
+              >
                 <div className="font-semibold text-foreground">
                   {String(option[displayKey])}
                 </div>
@@ -96,8 +107,8 @@ export const SelectionModal = <T extends SelectionOption>({
                   </div>
                 )}
               </div>
-            </label>
-          ))}
+            );
+          })}
         </div>
 
         {/* Error Message */}

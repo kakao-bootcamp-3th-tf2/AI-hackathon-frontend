@@ -13,5 +13,9 @@ export const authQueryKeys = {
   token: {
     all: ["auth", "token"] as const,
     refresh: () => [...authQueryKeys.token.all, "refresh"] as const
+  },
+  member: {
+    all: ["auth", "member"] as const,
+    join: () => [...authQueryKeys.member.all, "join"] as const
   }
 } as const;

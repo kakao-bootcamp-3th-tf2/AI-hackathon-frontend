@@ -9,6 +9,7 @@ import PageLayout from "@/components/layouts/PageLayout";
 import DesktopLayoutWrapper from "@/components/layouts/DesktopLayoutWrapper";
 import { createQueryClient } from "@/shared/api/queryClient";
 import { apiInstance } from "@/shared/api/instance";
+import { Toaster } from "@/components/ui/sonner";
 
 /**
  * Parse URL fragment for OAuth token
@@ -94,6 +95,7 @@ export default function App({ Component, pageProps }: AppProps) {
           )}
         </StoreProvider>
       </AuthProvider>
+      <Toaster />
     </QueryClientProvider>
   );
 }

@@ -22,5 +22,19 @@ export const googleCalendarQueryKeys = {
   create: {
     all: ["googleCalendar", "create"] as const,
     event: () => [...googleCalendarQueryKeys.create.all, "event"] as const
+  },
+  update: {
+    all: ["googleCalendar", "update"] as const,
+    manual: () => [...googleCalendarQueryKeys.update.all, "manual"] as const
+  },
+  suggest: {
+    all: ["googleCalendar", "suggest"] as const,
+    events: () => [...googleCalendarQueryKeys.suggest.all, "events"] as const
+  },
+  notities: {
+    all: ["googleCalendar", "notities"] as const,
+    list: () => [...googleCalendarQueryKeys.notities.all, "list"] as const,
+    detail: (id: number) =>
+      [...googleCalendarQueryKeys.notities.all, { id }] as const
   }
 } as const;

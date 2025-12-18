@@ -37,6 +37,32 @@ export interface GoogleCalendarCreateEventRequest {
   benefit?: string; // AI 추천 혜택 정보
 }
 
+export interface GoogleCalendarManualUpdateRequest {
+  eventId: string;
+  startAt: string;
+  endAt?: string;
+  suggest?: string;
+}
+
+export interface GoogleCalendarSuggestRequest {
+  eventIds: string[];
+}
+
+export interface GoogleCalendarSuggestResponse {
+  eventId: string;
+  suggest: string;
+  updatedAt: string;
+}
+
+export interface NotityDto {
+  id: number;
+  eventId: string;
+  title: string;
+  notifyTime: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface GoogleCalendarEventDto {
   id: string;
   title: string;

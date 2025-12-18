@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useRouter } from "next/router";
+import { toast } from "sonner";
 import { useStore } from "@/store/useStore";
 import { CreditCard, Smartphone, Package, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/entities/card/types";
 import { SelectionModal } from "@/components/features/setup/SelectionModal";
+import { useJoinMember, useAuthStatus } from "@/entities/auth";
 import {
   cardSelectionOptions,
   paySelectionOptions,
@@ -13,6 +16,8 @@ import {
 } from "@/lib/mockData";
 
 export default function SetupPage() {
+  const router = useRouter();
+  const { data: authStatus } = useAuthStatus();
   const {
     cards,
     addCard,
@@ -32,6 +37,19 @@ export default function SetupPage() {
   const [cardModalOpen, setCardModalOpen] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [planModalOpen, setPlanModalOpen] = useState(false);
+
+  // Join member mutation
+  const joinMutation = useJoinMember({
+    onSuccess: () => {
+      console.log("✓ 온보딩 완료! /app으로 리다이렉트합니다");
+      // 성공 후 /app으로 리다이렉트
+      router.push("/app");
+    },
+    onError: (error) => {
+      console.error("✗ 온보딩 실패:", error);
+      toast.error("온보딩 설정 중 오류가 발생했습니다. 다시 시도해주세요.");
+    }
+  });
 
   const handleAddCard = () => {
     setCardModalOpen(true);
@@ -60,13 +78,43 @@ export default function SetupPage() {
     setPlanModalOpen(false);
   };
 
-  const handleCompleteSetup = () => {
+  const handleCompleteSetup = async () => {
+    // 유효성 검증
+    if (!authStatus?.id) {
+      toast.error("사용자 정보를 불러올 수 없습니다. 다시 로그인해주세요.");
+      return;
+    }
+
+    if (cards.length === 0) {
+      toast.error("최소 하나 이상의 카드를 선택해주세요.");
+      return;
+    }
+
+    if (plans.length === 0) {
+      toast.error("최소 하나 이상의 요금제를 선택해주세요.");
+      return;
+    }
+
+    // 선택한 요금제 (첫 번째만 사용)
+    const selectedTelecom = plans[0].provider;
+
+    // 카드와 페이 이름을 payments 배열로 변환
+    const paymentNames = [
+      ...cards.map((card) => card.name),
+      ...pays.map((pay) => pay.name)
+    ];
+
     const setupData = {
-      cards,
-      pays,
-      plans
+      memberId: parseInt(authStatus.id),
+      telecom: selectedTelecom,
+      payments: paymentNames
     };
-    console.log("설정 완료:", setupData);
+
+    try {
+      await joinMutation.mutateAsync(setupData);
+    } catch (error) {
+      console.error("온보딩 중 오류 발생:", error);
+    }
   };
 
   const handleDeleteCard = (cardId: string) => {
@@ -270,9 +318,10 @@ export default function SetupPage() {
         <div className="mt-8 pt-6 border-t border-border/50">
           <Button
             onClick={handleCompleteSetup}
-            className="w-full h-12 rounded-lg text-base font-semibold"
+            disabled={joinMutation.isPending}
+            className="w-full h-12 rounded-lg text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            설정 완료하기
+            {joinMutation.isPending ? "설정 중..." : "설정 완료하기"}
           </Button>
         </div>
       </div>
@@ -287,6 +336,7 @@ export default function SetupPage() {
         displayKey="name"
         subtitleKey="issuer"
         initialSelectedIds={cards.map((card) => card.id)}
+        mode="multi"
       />
 
       <SelectionModal<Pay>
@@ -298,6 +348,7 @@ export default function SetupPage() {
         displayKey="name"
         subtitleKey="provider"
         initialSelectedIds={pays.map((pay) => pay.id)}
+        mode="multi"
       />
 
       <SelectionModal<Plan>
@@ -309,6 +360,7 @@ export default function SetupPage() {
         displayKey="name"
         subtitleKey="provider"
         initialSelectedIds={plans.map((plan) => plan.id)}
+        mode="single"
       />
     </div>
   );
