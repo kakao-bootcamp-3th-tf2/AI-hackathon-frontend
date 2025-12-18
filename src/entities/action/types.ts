@@ -1,10 +1,4 @@
-export type ActionCategory =
-  | "payment"
-  | "shopping"
-  | "subscription"
-  | "travel"
-  | "dining"
-  | "other";
+export type ActionCategory = "shopping" | "dining" | "cafe" | "movie";
 
 export interface ActionDateRange {
   start: Date;

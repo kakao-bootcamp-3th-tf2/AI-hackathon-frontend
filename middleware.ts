@@ -1,43 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const AUTH_COOKIE_NAME = "ai-hackathon:auth-token";
-const protectedPrefixes = [
-  "/api/actions",
-  "/api/benefits",
-  "/api/cards",
-  "/profile",
-  "/settings"
-];
+const AUTH_TOKEN_COOKIE = "ai-hackathon:auth-token";
 
-const hasAuthCookie = (request: NextRequest) =>
-  request.cookies.get(AUTH_COOKIE_NAME)?.value === "true";
-
-const shouldProtectPath = (pathname: string) =>
-  protectedPrefixes.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
+const hasValidAuth = (request: NextRequest): boolean => {
+  // Check if auth token cookie exists and is not empty
+  const authCookie = request.cookies.get(AUTH_TOKEN_COOKIE)?.value;
+  return !!authCookie && authCookie.length > 0;
+};
 
 export function middleware(request: NextRequest) {
-  // if (request.nextUrl.pathname === "/") {
-  //   const rewriteUrl = request.nextUrl.clone();
-  //   rewriteUrl.pathname = "/app";
-  //   return NextResponse.rewrite(rewriteUrl);
-  // }
+  const pathname = request.nextUrl.pathname;
+  const isAppRoute = pathname === "/app" || pathname.startsWith("/app/");
 
-  // if (shouldProtectPath(request.nextUrl.pathname) && !hasAuthCookie(request)) {
-  //   const redirectUrl = request.nextUrl.clone();
-  //   redirectUrl.pathname = "/";
-  //   redirectUrl.search = "";
-  //   return NextResponse.redirect(redirectUrl);
-  // }
+  // Protect /app routes - redirect to login if not authenticated
+  if (isAppRoute && !hasValidAuth(request)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/auth/login";
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
+  }
 
   return NextResponse.next();
 }
 
-// export const config = {
-//   matcher: [
-//     "/",
-//     ...protectedPrefixes.map((prefix) => `${prefix}/:path*`),
-//     ...protectedPrefixes
-//   ]
-// };
+export const config = {
+  matcher: ["/app/:path*"]
+};

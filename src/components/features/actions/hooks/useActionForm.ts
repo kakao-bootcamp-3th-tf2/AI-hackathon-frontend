@@ -3,7 +3,7 @@ import { ActionCategory } from "@/entities/action/types";
 
 export const useActionForm = (initialTitle = "") => {
   const [title, setTitle] = useState(initialTitle);
-  const [category, setCategory] = useState<ActionCategory>("other");
+  const [category, setCategory] = useState<ActionCategory>("shopping");
 
   useEffect(() => {
     setTitle(initialTitle);
@@ -11,7 +11,7 @@ export const useActionForm = (initialTitle = "") => {
 
   const resetForm = useCallback(() => {
     setTitle("");
-    setCategory("other");
+    setCategory("shopping");
   }, []);
 
   const isValid = title.trim().length > 0;

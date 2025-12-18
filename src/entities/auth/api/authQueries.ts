@@ -3,10 +3,15 @@
  * TanStack React Query hooks for auth domain
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  UseMutationOptions
+} from "@tanstack/react-query";
 import { authQueryKeys } from "./authQueryKeys";
-import { refreshToken, getAuthStatus } from "./authApi";
-import { AuthTokenResponse, AuthStatusResponse } from "../types";
+import { refreshToken, getAuthStatus, joinMember } from "./authApi";
+import { AuthTokenResponse, AuthStatusResponse, MemberJoinRequest } from "../types";
 
 /**
  * useAuthStatus - Fetch current user authentication status
@@ -23,8 +28,11 @@ export const useAuthStatus = (options?: { enabled?: boolean }) => {
 /**
  * useRefreshToken - Refresh access token using refresh token
  * Mutation for: POST /api/auth/token
+ * @param mutationOptions - Optional mutation options including onSuccess, onError callbacks
  */
-export const useRefreshToken = () => {
+export const useRefreshToken = (
+  mutationOptions?: Partial<UseMutationOptions<AuthTokenResponse, Error, void>>
+) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -37,15 +45,37 @@ export const useRefreshToken = () => {
 
       // Store token if needed
       if (data.accessToken) {
-        // Optionally store in localStorage or pass to httpClient
         localStorage.setItem("accessToken", data.accessToken);
       }
     },
-    onError: (error) => {
+    onError: () => {
       // Clear auth state on failure
       queryClient.removeQueries({
         queryKey: authQueryKeys.status.list()
       });
-    }
+    },
+    ...mutationOptions
+  });
+};
+
+/**
+ * useJoinMember - Complete member onboarding
+ * Mutation for: POST /api/members/join
+ * @param mutationOptions - Optional mutation options including onSuccess, onError callbacks
+ */
+export const useJoinMember = (
+  mutationOptions?: Partial<UseMutationOptions<void, Error, MemberJoinRequest>>
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: joinMember,
+    onSuccess: () => {
+      // Invalidate auth status to reflect ACTIVE status
+      queryClient.invalidateQueries({
+        queryKey: authQueryKeys.status.list()
+      });
+    },
+    ...mutationOptions
   });
 };
