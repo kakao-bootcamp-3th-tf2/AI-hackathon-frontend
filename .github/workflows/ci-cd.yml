@@ -99,6 +99,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:latest
           cache-from: type=registry,ref=${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:buildcache
           cache-to: type=registry,ref=${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:buildcache,mode=max
