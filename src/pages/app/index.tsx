@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Loader2 } from "lucide-react";
 import Header from "@/components/widgets/Header";
 import CalendarFeature from "@/components/features/calendar/CalendarFeature";
 import { BenefitPanel } from "@/components/features/benefits/components/BenefitPanel";
 import ActionInputDialog from "@/components/features/actions/ActionInputDialog";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { useStore } from "@/store/useStore";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -12,8 +13,14 @@ import {
   GoogleCalendarSuggest,
   useManualUpdateEvent
 } from "@/entities/googleCalendar";
+import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { googleCalendarQueryKeys } from "@/entities/googleCalendar/api/googleCalendarQueryKeys";
+
+type PendingSuggestion = {
+  eventId: string;
+  suggest: GoogleCalendarSuggest;
+};
 
 export default function MainPage() {
   const { selectedRange } = useStore();
@@ -25,6 +32,8 @@ export default function MainPage() {
     Record<string, SuggestBenefitWithEventInfo>
   >({});
   const [isLoadingBenefits, setIsLoadingBenefits] = useState(false);
+  const [pendingSuggestion, setPendingSuggestion] =
+    useState<PendingSuggestion | null>(null);
 
   // 혜택 수정 mutation
   const queryClient = useQueryClient();
@@ -49,6 +58,12 @@ export default function MainPage() {
     }
   });
 
+  // 🔍 suggestedBenefitsMap 변경 감시
+  useEffect(() => {
+    console.log("📊 suggestedBenefitsMap 업데이트됨:", suggestedBenefitsMap);
+    console.log("📊 suggestedBenefitsArray (BenefitPanel에 전달):", Object.values(suggestedBenefitsMap));
+  }, [suggestedBenefitsMap]);
+
   const handleAddAction = () => {
     if (!selectedDate) {
       toast({
@@ -64,11 +79,16 @@ export default function MainPage() {
 
   const handleEventCreated = (newBenefits: SuggestBenefitWithEventInfo[]) => {
     console.log("일정 생성 완료, 추천 혜택:", newBenefits);
+    console.log("newBenefits[0].eventId:", newBenefits[0]?.eventId);
+    console.log("newBenefits[0].suggestList:", newBenefits[0]?.suggestList);
+
     setSuggestedBenefitsMap((prev) => {
       const updated = { ...prev };
       newBenefits.forEach((benefit) => {
+        console.log("추가 중:", benefit.eventId, benefit);
         updated[benefit.eventId] = benefit;
       });
+      console.log("✅ setState에서 반환할 updated:", updated);
       return updated;
     });
   };
@@ -78,7 +98,6 @@ export default function MainPage() {
   };
 
   const handleSuggestedBenefitsUpdate = (newBenefits: SuggestBenefitWithEventInfo[]) => {
-    console.log("AI 추천 혜택 받음:", newBenefits);
     setSuggestedBenefitsMap((prev) => {
       const updated = { ...prev };
       newBenefits.forEach((benefit) => {
@@ -86,42 +105,55 @@ export default function MainPage() {
       });
       return updated;
     });
+    console.log("AI 추천 혜택 받음:", suggestedBenefitsMap);
   };
 
-  // 혜택 수정 핸들러
   const handleEditSuggest = (eventId: string, suggest: GoogleCalendarSuggest) => {
-    console.log("혜택 수정:", eventId, suggest);
+    setPendingSuggestion({ eventId, suggest });
+  };
 
-    // API 호출
-    manualUpdateMutation.mutate({
-      eventId,
-      startAt: suggest.startAt,
-      endAt: suggest.endAt,
-      suggest: suggest.suggest
-    });
-
-    // 선택한 혜택을 suggestedBenefitsMap에서 제거
+  const clearSuggestionFromMap = (eventId: string, suggestText: string) => {
     setSuggestedBenefitsMap((prev) => {
       const updated = { ...prev };
-      if (updated[eventId]) {
-        // 해당 eventId의 suggestList에서 이 suggest를 제거
-        const filtered = updated[eventId].suggestList.filter(
-          (s) => s.suggest !== suggest.suggest
-        );
-
-        if (filtered.length === 0) {
-          // suggestList가 비었으면 전체 entry 제거
-          delete updated[eventId];
-        } else {
-          // 남은 suggestList로 업데이트
-          updated[eventId] = {
-            ...updated[eventId],
-            suggestList: filtered
-          };
-        }
+      if (!updated[eventId]) {
+        return updated;
+      }
+      const filtered = updated[eventId].suggestList.filter(
+        (s) => s.suggest !== suggestText
+      );
+      if (filtered.length === 0) {
+        delete updated[eventId];
+      } else {
+        updated[eventId] = {
+          ...updated[eventId],
+          suggestList: filtered
+        };
       }
       return updated;
     });
+  };
+
+  const applyPendingSuggestion = () => {
+    if (!pendingSuggestion) return;
+    const { eventId, suggest } = pendingSuggestion;
+
+    manualUpdateMutation.mutate(
+      {
+        eventId,
+        startAt: suggest.startAt,
+        endAt: suggest.endAt,
+        suggest: suggest.suggest
+      },
+      {
+        onSuccess: () => {
+          clearSuggestionFromMap(eventId, suggest.suggest);
+          setPendingSuggestion(null);
+        },
+        onError: () => {
+          setPendingSuggestion(null);
+        }
+      }
+    );
   };
 
   // Record를 배열로 변환 (BenefitPanel에 전달용)
@@ -178,6 +210,54 @@ export default function MainPage() {
         onEventCreated={handleEventCreated}
         onLoadingChange={handleLoadingChange}
       />
+      {pendingSuggestion && (
+        <Modal
+          open={Boolean(pendingSuggestion)}
+          onClose={() => setPendingSuggestion(null)}
+          title="추천 혜택 적용"
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              다음 AI 추천 혜택을 일정에 반영하시겠습니까?
+            </p>
+            <div>
+              <p className="text-xs text-muted-foreground">이벤트</p>
+              <p className="text-base font-semibold text-foreground">
+                {suggestedBenefitsMap[pendingSuggestion.eventId]?.summary ?? "추천 일정"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">추천 내용</p>
+              <p className="text-sm text-foreground whitespace-pre-line">
+                {pendingSuggestion.suggest.suggest}
+              </p>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {pendingSuggestion.suggest.startAt &&
+                `${format(new Date(pendingSuggestion.suggest.startAt), "yyyy.MM.dd HH:mm")} - ${
+                  pendingSuggestion.suggest.endAt
+                    ? format(new Date(pendingSuggestion.suggest.endAt), "HH:mm")
+                    : format(new Date(pendingSuggestion.suggest.startAt), "HH:mm")
+                }`}
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-6">
+            <Button variant="outline" onClick={() => setPendingSuggestion(null)}>
+              취소
+            </Button>
+            <Button
+              onClick={applyPendingSuggestion}
+              disabled={manualUpdateMutation.isPending}
+              className="gap-2"
+            >
+              {manualUpdateMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              {manualUpdateMutation.isPending ? "적용 중..." : "적용하기"}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

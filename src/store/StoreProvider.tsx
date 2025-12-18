@@ -21,6 +21,7 @@ interface StoreContextValue {
   getActionsForDate: (date: Date) => Action[];
   getActionsForRange: (range: DateRange) => Action[];
   addAction: (payload: ActionFormPayload) => void;
+  removeAction: (actionId: string) => void;
   cards: Card[];
   addCard: (cards: Card[]) => void;
   removeCard: (cardId: string) => void;
@@ -53,7 +54,7 @@ const normalizeRange = (start: Date | null, end: Date | null): DateRange => {
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [selectedRange, setSelectedRangeState] = useState<DateRange>(() =>
-    normalizeRange(new Date(), new Date())
+    normalizeRange(null, null)
   );
   const [actions, setActions] = useState<Action[]>(defaultActions);
   const [cards, setCards] = useState<Card[]>(defaultCards);
@@ -80,6 +81,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       description: payload.description
     };
     setActions((prev) => [newAction, ...prev]);
+  }, []);
+
+  const removeAction = useCallback((actionId: string) => {
+    setActions((prev) => prev.filter((action) => action.id !== actionId));
   }, []);
 
   const addCard = useCallback((newCards: Card[]) => {
@@ -118,12 +123,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setPlans((prev) => prev.filter((plan) => plan.id !== planId));
   }, []);
 
+  const getActionInterval = useCallback((action: Action) => {
+    const rangeStart = startOfDay(action.range?.start ?? action.date);
+    const rangeEnd = endOfDay(action.range?.end ?? action.range?.start ?? action.date);
+    return { start: rangeStart, end: rangeEnd };
+  }, []);
+
   const getActionsForDate = useCallback(
-    (date: Date) =>
-      actions.filter(
-        (action) => action.date >= startOfDay(date) && action.date <= endOfDay(date)
-      ),
-    [actions]
+    (date: Date) => {
+      const targetStart = startOfDay(date);
+      const targetEnd = endOfDay(date);
+      return actions.filter((action) => {
+        const { start, end } = getActionInterval(action);
+        return start <= targetEnd && end >= targetStart;
+      });
+    },
+    [actions, getActionInterval]
   );
 
   const getActionsForRange = useCallback(
@@ -134,11 +149,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const rangeStart = startOfDay(range.start);
       const rangeEnd = endOfDay(range.end ?? range.start);
 
-      return actions.filter(
-        (action) => action.date >= rangeStart && action.date <= rangeEnd
-      );
+      return actions.filter((action) => {
+        const { start, end } = getActionInterval(action);
+        return start <= rangeEnd && end >= rangeStart;
+      });
     },
-    [actions]
+    [actions, getActionInterval]
   );
 
   const getBenefitsForDate = useCallback(
@@ -157,6 +173,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     getActionsForDate,
     getActionsForRange,
     addAction,
+    removeAction,
     cards,
     addCard,
     removeCard,

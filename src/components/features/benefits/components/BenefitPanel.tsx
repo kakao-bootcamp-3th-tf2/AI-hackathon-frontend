@@ -186,7 +186,8 @@ export const BenefitPanel: React.FC<BenefitPanelProps> = ({
 
   // 선택한 날짜 범위 내의 추천 혜택만 필터링
   const filteredSuggestedBenefits = useMemo(() => {
-    if (!hasSelection || suggestedBenefits.length === 0) {
+    // suggestedBenefits가 없거나, hasSelection이 없으면 그대로 반환
+    if (suggestedBenefits.length === 0 || !hasSelection) {
       return suggestedBenefits;
     }
 

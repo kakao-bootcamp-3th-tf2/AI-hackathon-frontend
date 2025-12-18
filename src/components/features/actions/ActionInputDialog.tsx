@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import { format, isSameDay, startOfDay, endOfDay } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,11 @@ import { useActionForm } from "./hooks/useActionForm";
 import { useStore } from "@/store/useStore";
 import { categoryIcons, categoryLabels } from "@/entities/action/constants";
 import { ActionCategory, ActionDateRange } from "@/entities/action/types";
-import { useCreateCalendarEvent, SuggestBenefitWithEventInfo } from "@/entities/googleCalendar";
+import {
+  useCreateCalendarEvent,
+  SuggestBenefitWithEventInfo,
+  googleCalendarQueryKeys
+} from "@/entities/googleCalendar";
 
 // Action category를 Google Calendar 카테고리로 변환
 const getCategoryForCalendar = (category: ActionCategory): string => {
@@ -20,6 +25,19 @@ const getCategoryForCalendar = (category: ActionCategory): string => {
     movie: "영화"
   };
   return categoryMap[category];
+};
+
+const toUtcISOString = (date: Date) => {
+  const utcTimestamp = Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+    date.getMilliseconds()
+  );
+  return new Date(utcTimestamp).toISOString();
 };
 
 interface ActionInputDialogProps {
@@ -39,24 +57,27 @@ export default function ActionInputDialog({
   onEventCreated,
   onLoadingChange
 }: ActionInputDialogProps) {
-  const { selectedRange, addAction } = useStore();
+  const { selectedRange, addAction, removeAction } = useStore();
   const { title, setTitle, category, setCategory, resetForm, isValid } =
     useActionForm(initialText);
+
+  const queryClient = useQueryClient();
+
   const createCalendarEventMutation = useCreateCalendarEvent({
     onSuccess: (eventData) => {
       console.log("이벤트 생성 성공:", eventData);
+      console.log("suggestList:", eventData.suggestList);
 
-      // suggestList가 있으면 부모에 전달
-      if (eventData.suggestList && eventData.suggestList.length > 0) {
-        const suggestBenefit: SuggestBenefitWithEventInfo = {
-          eventId: eventData.eventId || eventData.id.toString(),
-          summary: eventData.summary || eventData.title || "",
-          startAt: eventData.startAt || eventData.startTime || "",
-          endAt: eventData.endAt || eventData.endTime || "",
-          suggestList: eventData.suggestList
-        };
-        onEventCreated?.([suggestBenefit]);
-      }
+      // suggestList 여부와 관계없이 항상 부모에 전달 (리렌더링 필요)
+      const suggestBenefit: SuggestBenefitWithEventInfo = {
+        eventId: eventData.eventId || eventData.id.toString(),
+        summary: eventData.summary || eventData.title || "",
+        startAt: eventData.startAt || eventData.startTime || "",
+        endAt: eventData.endAt || eventData.endTime || "",
+        suggestList: eventData.suggestList || []
+      };
+      console.log("부모에 전달하는 suggestBenefit:", suggestBenefit);
+      onEventCreated?.([suggestBenefit]);
       onLoadingChange?.(false);
     },
     onError: () => {
@@ -97,28 +118,45 @@ export default function ActionInputDialog({
     onOpenChange(false);
   }, [onOpenChange, resetForm]);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isValid) return;
 
-    // 로컬 스토어에 액션 추가
+    const tempActionId = `temp-action-${Date.now()}`;
     addAction({
+      id: tempActionId,
       date,
       title: title.trim(),
       category,
       range: rangeToSubmit
     });
 
-    // Google Calendar에 이벤트 생성
     const eventStart = start || date;
     const eventEnd = normalizedEnd || eventStart;
 
-    createCalendarEventMutation.mutate({
-      category: getCategoryForCalendar(category),
-      brand: title.trim(),
-      startAt: startOfDay(eventStart).toISOString(),
-      endAt: endOfDay(eventEnd).toISOString()
-    });
+    try {
+      const startAtIso = toUtcISOString(startOfDay(eventStart));
+      const endAtIso = toUtcISOString(endOfDay(eventEnd));
+
+      console.log("이벤트 생성 시작...");
+      await createCalendarEventMutation.mutateAsync({
+        category: getCategoryForCalendar(category),
+        brand: title.trim(),
+        startAt: startAtIso,
+        endAt: endAtIso
+      });
+
+      await queryClient.refetchQueries({
+        queryKey: googleCalendarQueryKeys.primary.all,
+        type: "all"
+      });
+
+      console.log("이벤트 생성 완료, 캘린더 갱신 중...");
+    } catch (error) {
+      console.error("일정 추가 실패:", error);
+    } finally {
+      removeAction(tempActionId);
+    }
 
     handleClose();
   };
@@ -175,8 +213,15 @@ export default function ActionInputDialog({
           <Button variant="outline" onClick={handleClose} type="button">
             취소
           </Button>
-          <Button type="submit" disabled={!isValid}>
-            추가하기
+          <Button
+            type="submit"
+            disabled={!isValid || createCalendarEventMutation.isPending}
+            className="gap-2"
+          >
+            {createCalendarEventMutation.isPending && (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
+            {createCalendarEventMutation.isPending ? "추가 중..." : "추가하기"}
           </Button>
         </div>
       </form>

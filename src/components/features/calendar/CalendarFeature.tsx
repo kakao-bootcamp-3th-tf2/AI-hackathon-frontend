@@ -57,13 +57,23 @@ export default function CalendarFeature({ className, onSuggestedBenefits, onLoad
    * content는 EventDetailModal에서만 표시
    */
   const convertGoogleEventToAction = useCallback((event: GoogleCalendarEvent): Action => {
+    const start = new Date(event.startAt);
+    const end = event.endAt ? new Date(event.endAt) : start;
+
     return {
       id: `google-${event.id}`,
-      date: new Date(event.startAt),
+      date: start,
       title: event.summary,
       description: event.description || event.content,
-      category: "shopping" // Google Calendar 이벤트는 "shopping" 카테고리로 기본 설정
+      category: "shopping", // Google Calendar 이벤트는 "shopping" 카테고리로 기본 설정
+      range: { start, end }
     };
+  }, []);
+
+  const getActionBounds = useCallback((action: Action) => {
+    const rangeStart = startOfDay(action.range?.start ?? action.date);
+    const rangeEnd = endOfDay(action.range?.end ?? action.range?.start ?? action.date);
+    return { start: rangeStart, end: rangeEnd };
   }, []);
 
   /**
@@ -74,14 +84,17 @@ export default function CalendarFeature({ className, onSuggestedBenefits, onLoad
     (date: Date): Action[] => {
       if (!googleCalendarResponse?.events) return [];
 
+      const targetStart = startOfDay(date);
+      const targetEnd = endOfDay(date);
+
       return googleCalendarResponse.events
-        .filter((event) => {
-          const eventDate = new Date(event.startAt);
-          return isSameDay(eventDate, date);
-        })
-        .map(convertGoogleEventToAction);
+        .map(convertGoogleEventToAction)
+        .filter((action) => {
+          const { start, end } = getActionBounds(action);
+          return start <= targetEnd && end >= targetStart;
+        });
     },
-    [googleCalendarResponse, convertGoogleEventToAction]
+    [googleCalendarResponse, convertGoogleEventToAction, getActionBounds]
   );
 
   /**
@@ -108,16 +121,15 @@ export default function CalendarFeature({ className, onSuggestedBenefits, onLoad
       // 날짜 범위 내의 Google 이벤트 필터링
       if (!googleCalendarResponse?.events) return localActions;
 
-      const googleActions = googleCalendarResponse.events
-        .filter((event) => {
-          const eventDate = startOfDay(new Date(event.startAt));
-          const rangeStart = startOfDay(range.start!);
-          const rangeEnd = endOfDay(range.end ?? range.start!);
+      const rangeStart = startOfDay(range.start!);
+      const rangeEnd = endOfDay(range.end ?? range.start!);
 
-          // 이벤트가 범위 내에 있는지 확인 (일자만 비교, 시간 제외)
-          return eventDate >= rangeStart && eventDate <= rangeEnd;
-        })
-        .map(convertGoogleEventToAction);
+      const googleActions = googleCalendarResponse.events
+        .map(convertGoogleEventToAction)
+        .filter((action) => {
+          const { start, end } = getActionBounds(action);
+          return start <= rangeEnd && end >= rangeStart;
+        });
 
       return [...localActions, ...googleActions];
     },
@@ -132,20 +144,23 @@ export default function CalendarFeature({ className, onSuggestedBenefits, onLoad
     (range: DateRange): string[] => {
       if (!googleCalendarResponse?.events) return [];
 
-      const googleEventIds = googleCalendarResponse.events
-        .filter((event) => {
-          const eventDate = startOfDay(new Date(event.startAt));
-          const rangeStart = startOfDay(range.start!);
-          const rangeEnd = endOfDay(range.end ?? range.start!);
+      const rangeStart = startOfDay(range.start!);
+      const rangeEnd = endOfDay(range.end ?? range.start!);
 
-          // 이벤트가 범위 내에 있는지 확인 (일자만 비교, 시간 제외)
-          return eventDate >= rangeStart && eventDate <= rangeEnd;
+      const googleEventIds = googleCalendarResponse.events
+        .map((event) => ({
+          event,
+          action: convertGoogleEventToAction(event)
+        }))
+        .filter(({ action }) => {
+          const { start, end } = getActionBounds(action);
+          return start <= rangeEnd && end >= rangeStart;
         })
-        .map((event) => event.id);
+        .map(({ event }) => event.id);
 
       return googleEventIds;
     },
-    [googleCalendarResponse]
+    [googleCalendarResponse, convertGoogleEventToAction, getActionBounds]
   );
 
   // useSuggestEvents 뮤테이션
