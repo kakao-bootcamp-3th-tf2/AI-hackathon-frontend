@@ -1,5 +1,9 @@
 name: CI/CD Pipeline
 
+concurrency:
+  group: deployment
+  cancel-in-progress: true
+
 on:
   # PR 생성/업데이트 시 검증만 수행
   pull_request:
@@ -11,7 +15,7 @@ on:
   # dev 브랜치 푸시 시 검증 + 배포
   push:
     branches:
-      - dev
+      - main
 
   # 수동 실행 (환경/브랜치/버전 선택 가능)
   workflow_dispatch:
@@ -25,9 +29,6 @@ on:
         description: 'Version tag (optional, e.g., v1.0.0)'
         required: false
         type: string
-
-env:
-  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_HUB_USERNAME }}/jojo-discount-fe
 
 jobs:
   # 검증 작업 (모든 트리거에서 실행)
@@ -92,27 +93,35 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Generate Docker tags
-        id: tags
-        run: |
-          TAGS="${{ env.DOCKER_IMAGE_NAME }}:latest"
-
-          # 버전 태그가 제공된 경우 추가
-          if [ -n "${{ inputs.version }}" ]; then
-            TAGS="${TAGS},${{ env.DOCKER_IMAGE_NAME }}:${{ inputs.version }}"
-          fi
-
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache,mode=max
+          tags: ${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:latest
+          cache-from: type=registry,ref=${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:buildcache
+          cache-to: type=registry,ref=${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:buildcache,mode=max
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.APP_INSTANCE_IP }} >> ~/.ssh/known_hosts
+
+      - name: Transfer docker-compose file
+        run: |
+          scp -i ~/.ssh/id_rsa docker-compose.frontend.yaml ubuntu@${{ secrets.APP_INSTANCE_IP }}:~/docker-compose.frontend.yaml
+
+      - name: Deploy with docker-compose
+        run: |
+          ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.APP_INSTANCE_IP }} << 'EOF'
+          cd ~
+          export FRONTEND_DOCKER_IMAGE=${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}
+          docker compose -f docker-compose.frontend.yaml pull
+          docker compose -f docker-compose.frontend.yaml up -d
+          EOF
 
       - name: Deployment summary
         run: |
@@ -123,5 +132,10 @@ jobs:
             echo "**Version:** ${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Docker Tags:**" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.tags.outputs.tags }}" | tr ',' '\n' | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+          echo "**Docker Image:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ${{secrets.DOCKER_HUB_USERNAME}}/${{secrets.DOCKER_IMAGE_NAME_FRONTEND}}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployment Target:**" >> $GITHUB_STEP_SUMMARY
+          echo "- IP: ${{ secrets.APP_INSTANCE_IP }}" >> $GITHUB_STEP_SUMMARY
+          echo "- User: ubuntu" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: Deployed with docker-compose" >> $GITHUB_STEP_SUMMARY
