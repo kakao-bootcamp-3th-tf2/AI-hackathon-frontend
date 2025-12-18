@@ -1,0 +1,129 @@
+import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { endOfDay, startOfDay } from "date-fns";
+import { Action, ActionFormPayload } from "@/entities/action/types";
+import { defaultActions } from "@/entities/action/data";
+import { Card } from "@/entities/card/types";
+import { defaultCards } from "@/entities/card/data";
+import { Benefit } from "@/entities/benefit/types";
+import { defaultBenefits } from "@/entities/benefit/data";
+
+export interface DateRange {
+  start: Date | null;
+  end: Date | null;
+}
+
+interface StoreContextValue {
+  selectedRange: DateRange;
+  setSelectedRange: (start: Date | null, end: Date | null) => void;
+  selectSingleDate: (date: Date) => void;
+  primarySelectedDate: Date | null;
+  getActionsForDate: (date: Date) => Action[];
+  getActionsForRange: (range: DateRange) => Action[];
+  addAction: (payload: ActionFormPayload) => void;
+  cards: Card[];
+  getBenefitsForDate: (date: Date) => Benefit[];
+}
+
+const StoreContext = createContext<StoreContextValue | null>(null);
+
+const normalizeRange = (start: Date | null, end: Date | null): DateRange => {
+  if (!start) {
+    return { start: null, end: null };
+  }
+
+  const normalizedEnd = end ?? start;
+  const startTime = start.getTime();
+  const endTime = normalizedEnd.getTime();
+
+  if (startTime <= endTime) {
+    return { start: new Date(startTime), end: new Date(endTime) };
+  }
+
+  return { start: new Date(endTime), end: new Date(startTime) };
+};
+
+export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [selectedRange, setSelectedRangeState] = useState<DateRange>(() => normalizeRange(new Date(), new Date()));
+  const [actions, setActions] = useState<Action[]>(defaultActions);
+
+  const cards = useMemo<Card[]>(() => defaultCards, []);
+
+  const setSelectedRange = useCallback(
+    (start: Date | null, end: Date | null) => {
+      setSelectedRangeState(normalizeRange(start, end));
+    },
+    []
+  );
+
+  const selectSingleDate = useCallback(
+    (date: Date) => {
+      setSelectedRange(date, date);
+    },
+    [setSelectedRange]
+  );
+
+  const addAction = useCallback((payload: ActionFormPayload) => {
+    const newAction: Action = {
+      id: payload.id ?? `action-${Date.now()}`,
+      date: payload.date,
+      title: payload.title,
+      category: payload.category,
+      description: payload.description,
+      relatedCardId: payload.relatedCardId
+    };
+    setActions((prev) => [newAction, ...prev]);
+  }, []);
+
+  const getActionsForDate = useCallback(
+    (date: Date) =>
+      actions.filter(
+        (action) => action.date >= startOfDay(date) && action.date <= endOfDay(date)
+      ),
+    [actions]
+  );
+
+  const getActionsForRange = useCallback(
+    (range: DateRange) => {
+      if (!range.start) {
+        return [];
+      }
+      const rangeStart = startOfDay(range.start);
+      const rangeEnd = endOfDay(range.end ?? range.start);
+
+      return actions.filter(
+        (action) => action.date >= rangeStart && action.date <= rangeEnd
+      );
+    },
+    [actions]
+  );
+
+  const getBenefitsForDate = useCallback(
+    (date: Date) =>
+      defaultBenefits
+        .filter((benefit) => benefit.availableFrom <= date)
+        .sort((a, b) => b.availableFrom.getTime() - a.availableFrom.getTime()),
+    []
+  );
+
+  const value: StoreContextValue = {
+    selectedRange,
+    setSelectedRange,
+    selectSingleDate,
+    primarySelectedDate: selectedRange.start,
+    getActionsForDate,
+    getActionsForRange,
+    addAction,
+    cards,
+    getBenefitsForDate
+  };
+
+  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+};
+
+export const useStore = (): StoreContextValue => {
+  const context = useContext(StoreContext);
+  if (!context) {
+    throw new Error("useStore must be used within a StoreProvider");
+  }
+  return context;
+};
