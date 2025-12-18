@@ -17,12 +17,14 @@ export default function PageLayout({ children }: PageLayoutProps) {
   const router = useRouter();
 
   return (
-    <div className="relative min-h-screen pb-24">
-      {children}
+    <div className="flex min-h-screen flex-col">
+      <div className="flex-1">
+        {children}
+      </div>
 
       <nav
         aria-label="하단 네비게이션"
-        className="fixed bottom-4 left-1/2 z-10 flex w-[calc(100%-1.5rem)] max-w-3xl -translate-x-1/2 items-center justify-between rounded-2xl border border-border/70 bg-card/95 px-6 py-3 text-sm shadow-[0_15px_40px_-20px_rgba(15,23,42,0.8)] backdrop-blur"
+        className="sticky bottom-0 z-10 flex items-center justify-between border-t border-border/70 bg-card/95 px-6 py-4 text-sm shadow-[0_-2px_10px_rgba(15,23,42,0.1)] backdrop-blur"
       >
         {navItems.map((item) => {
           const isActive = router.pathname === item.href;

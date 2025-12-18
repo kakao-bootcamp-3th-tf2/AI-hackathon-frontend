@@ -6,6 +6,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/store/auth/AuthProvider";
 import { StoreProvider } from "@/store/StoreProvider";
 import PageLayout from "@/components/layouts/PageLayout";
+import DesktopLayoutWrapper from "@/components/layouts/DesktopLayoutWrapper";
 import { createQueryClient } from "@/shared/api/queryClient";
 import { apiInstance } from "@/shared/api/instance";
 
@@ -76,7 +77,13 @@ export default function App({ Component, pageProps }: AppProps) {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <StoreProvider>
-          {shouldUseLayout ? <PageLayout>{content}</PageLayout> : content}
+          {shouldUseLayout ? (
+            <DesktopLayoutWrapper>
+              <PageLayout>{content}</PageLayout>
+            </DesktopLayoutWrapper>
+          ) : (
+            content
+          )}
         </StoreProvider>
       </AuthProvider>
     </QueryClientProvider>
