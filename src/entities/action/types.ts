@@ -6,6 +6,11 @@ export type ActionCategory =
   | "dining"
   | "other";
 
+export interface ActionDateRange {
+  start: Date;
+  end: Date | null;
+}
+
 export interface Action {
   id: string;
   date: Date;
@@ -13,10 +18,10 @@ export interface Action {
   description?: string;
   category: ActionCategory;
   relatedCardId?: string;
+  range?: ActionDateRange;
 }
 
-export interface ActionFormPayload
-  extends Omit<Action, "id" | "description"> {
+export interface ActionFormPayload extends Omit<Action, "id" | "description"> {
   description?: string;
   id?: string;
 }

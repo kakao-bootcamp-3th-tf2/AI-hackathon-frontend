@@ -1,5 +1,5 @@
 import Link from "next/link";
-import React, { useState } from "react";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import Header from "@/components/widgets/Header";
 import CalendarFeature from "@/components/features/calendar/CalendarFeature";
@@ -11,13 +11,14 @@ import { useStore } from "@/store/useStore";
 import { useToast } from "@/hooks/use-toast";
 
 export default function MainPage() {
-  const { primarySelectedDate } = useStore();
+  const { selectedRange } = useStore();
+  const selectedDate = selectedRange.start;
   const { toast } = useToast();
   const [showActionDialog, setShowActionDialog] = useState(false);
   const { isAuthenticated } = useAuth();
 
   const handleAddAction = () => {
-    if (!primarySelectedDate) {
+    if (!selectedDate) {
       toast({
         title: "날짜를 선택해 주세요",
         description: "캘린더에서 날짜를 먼저 선택해 주세요.",
@@ -53,10 +54,10 @@ export default function MainPage() {
                   onClick={handleAddAction}
                   className="w-full"
                   size="lg"
-                  disabled={!primarySelectedDate}
+                  disabled={!selectedDate}
                 >
                   <Plus className="h-5 w-5 mr-2" />
-                  {primarySelectedDate ? "일정 추가하기" : "날짜를 선택해 주세요"}
+                  {selectedDate ? "일정 추가하기" : "날짜를 선택해 주세요"}
                 </Button>
               </div>
 
@@ -71,7 +72,7 @@ export default function MainPage() {
           <ActionInputDialog
             open={showActionDialog}
             onOpenChange={setShowActionDialog}
-            initialDate={primarySelectedDate || undefined}
+            initialDate={selectedDate || undefined}
           />
         </div>
       </div>

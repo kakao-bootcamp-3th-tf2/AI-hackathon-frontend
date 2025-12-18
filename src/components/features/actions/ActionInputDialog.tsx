@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import FormField from "@/components/shared/form/FormField";
 import { useActionForm } from "./hooks/useActionForm";
 import { useStore } from "@/store/useStore";
 import { categoryIcons, categoryLabels } from "@/entities/action/constants";
-import { ActionCategory } from "@/entities/action/types";
+import { ActionCategory, ActionDateRange } from "@/entities/action/types";
 import { ko } from "date-fns/locale";
 
 interface ActionInputDialogProps {
@@ -24,11 +24,23 @@ export default function ActionInputDialog({
   initialText = "",
   initialDate
 }: ActionInputDialogProps) {
-  const { primarySelectedDate, addAction } = useStore();
+  const { selectedRange, addAction } = useStore();
   const { title, setTitle, category, setCategory, resetForm, isValid } =
     useActionForm(initialText);
 
-  const date = initialDate || primarySelectedDate || new Date();
+  const start = selectedRange.start;
+  const end = selectedRange.end;
+  const rangeToSubmit: ActionDateRange | undefined = start
+    ? { start, end: end ?? start }
+    : undefined;
+
+  const normalizedEnd = rangeToSubmit?.end;
+  const date = initialDate || start || new Date();
+  const formattedRangeLabel = start
+    ? normalizedEnd && !isSameDay(start, normalizedEnd)
+      ? `${format(start, "M월 d일")} ~ ${format(normalizedEnd, "M월 d일")}`
+      : format(start, "M월 d일")
+    : undefined;
 
   const categoryOptions = useMemo(
     () =>
@@ -51,7 +63,8 @@ export default function ActionInputDialog({
     addAction({
       date,
       title: title.trim(),
-      category
+      category,
+      range: rangeToSubmit
     });
 
     handleClose();
@@ -62,7 +75,12 @@ export default function ActionInputDialog({
       <form className="space-y-4 py-2" onSubmit={handleSubmit}>
         <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
           <CalendarIcon className="h-4 w-4" />
-          <span>{format(date, "yyyy년 M월 d일 (EEEE)", { locale: ko })}</span>
+          {formattedRangeLabel && (
+            <p className="text-xs text-muted-foreground">
+              선택된 기간:{" "}
+              <span className="font-semibold text-foreground">{formattedRangeLabel}</span>
+            </p>
+          )}
         </div>
 
         <FormField label="내용" htmlFor="action-title">

@@ -43,17 +43,16 @@ const normalizeRange = (start: Date | null, end: Date | null): DateRange => {
 };
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [selectedRange, setSelectedRangeState] = useState<DateRange>(() => normalizeRange(new Date(), new Date()));
+  const [selectedRange, setSelectedRangeState] = useState<DateRange>(() =>
+    normalizeRange(new Date(), new Date())
+  );
   const [actions, setActions] = useState<Action[]>(defaultActions);
 
   const cards = useMemo<Card[]>(() => defaultCards, []);
 
-  const setSelectedRange = useCallback(
-    (start: Date | null, end: Date | null) => {
-      setSelectedRangeState(normalizeRange(start, end));
-    },
-    []
-  );
+  const setSelectedRange = useCallback((start: Date | null, end: Date | null) => {
+    setSelectedRangeState(normalizeRange(start, end));
+  }, []);
 
   const selectSingleDate = useCallback(
     (date: Date) => {
@@ -68,8 +67,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       date: payload.date,
       title: payload.title,
       category: payload.category,
-      description: payload.description,
-      relatedCardId: payload.relatedCardId
+      description: payload.description
     };
     setActions((prev) => [newAction, ...prev]);
   }, []);
