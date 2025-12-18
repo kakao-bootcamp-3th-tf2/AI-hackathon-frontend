@@ -3,7 +3,7 @@ import { isSameDay, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils/cn";
 import { useStore } from "@/store/useStore";
 import type { DateRange } from "@/store/StoreProvider";
-import { usePrimaryCalendarEvents, GoogleCalendarEvent } from "@/entities/googleCalendar";
+import { usePrimaryCalendarEvents, useSuggestEvents, GoogleCalendarEvent } from "@/entities/googleCalendar";
 import type { Action } from "@/entities/action/types";
 import { useCalendarNavigation } from "./hooks/useCalendarNavigation";
 import CalendarHeader from "./components/CalendarHeader";
@@ -122,6 +122,46 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
     [getActionsForRange, googleCalendarResponse, convertGoogleEventToAction]
   );
 
+  /**
+   * 드래그 범위 내의 Google Calendar eventId 추출
+   * Google 이벤트는 id가 "google-"로 시작함
+   */
+  const getGoogleEventIdsForRange = useCallback(
+    (range: DateRange): string[] => {
+      if (!googleCalendarResponse?.events) return [];
+
+      const googleEventIds = googleCalendarResponse.events
+        .filter((event) => {
+          const eventDate = startOfDay(new Date(event.startAt));
+          const rangeStart = startOfDay(range.start!);
+          const rangeEnd = endOfDay(range.end ?? range.start!);
+
+          // 이벤트가 범위 내에 있는지 확인 (일자만 비교, 시간 제외)
+          return eventDate >= rangeStart && eventDate <= rangeEnd;
+        })
+        .map((event) => event.id);
+
+      return googleEventIds;
+    },
+    [googleCalendarResponse]
+  );
+
+  // useSuggestEvents 뮤테이션
+  const suggestEventsMutation = useSuggestEvents();
+
+  // AI 일정 추천 핸들러
+  const handleSuggestEvents = useCallback(async () => {
+    const eventIds = getGoogleEventIdsForRange(selectedRange);
+
+    if (eventIds.length === 0) {
+      console.log("추천할 일정이 없습니다");
+      return;
+    }
+
+    console.log("AI 일정 추천 시작:", eventIds);
+    suggestEventsMutation.mutate({ eventIds });
+  }, [selectedRange, getGoogleEventIdsForRange]);
+
   // 이벤트 클릭 핸들러
   const handleEventClick = useCallback((event: Action) => {
     setSelectedEvent(event);
@@ -220,26 +260,12 @@ export default function CalendarFeature({ className }: CalendarFeatureProps) {
         />
       )}
 
-      {/* Google Calendar 로딩 중 스피너 표시 */}
-      {googleCalendarLoading ? (
-        <CalendarLoadingSpinner />
-      ) : (
-        <CalendarGrid
-          calendarDays={calendarDays}
-          currentMonth={currentMonth}
-          selectedRange={selectedRange}
-          onSelectDate={handleSelectDay}
-          onDayPointerDown={handleDayPointerDown}
-          onDayPointerEnter={handleDayPointerEnter}
-          onDayPointerUp={handlePointerUp}
-          getActionsForDate={getCombinedActionsForDate}
-        />
-      )}
-
       <SelectedDateSummary
         selectedRange={selectedRange}
         getActionsForRange={getCombinedActionsForRange}
         onEventClick={handleEventClick}
+        onSuggestEvents={handleSuggestEvents}
+        isLoadingSuggest={suggestEventsMutation.isPending}
       />
 
       {/* 이벤트 상세 모달 */}
