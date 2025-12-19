@@ -18,20 +18,26 @@ import {
 interface FetchCalendarEventsParams {
   from: string; // ISO-8601 datetime
   to: string; // ISO-8601 datetime
+  signal?: AbortSignal;
 }
 
 /**
  * Fetch events from primary Google Calendar
  * GET /api/calendar/events
  */
-export const fetchPrimaryCalendarEvents = async (params: FetchCalendarEventsParams) => {
+export const fetchPrimaryCalendarEvents = async ({
+  from,
+  to,
+  signal
+}: FetchCalendarEventsParams) => {
   const response = await apiInstance.get<APIResponse<GoogleCalendarEventsResponse>>(
     "/api/calendar/events",
     {
       params: {
-        from: params.from,
-        to: params.to
-      }
+        from,
+        to
+      },
+      signal
     }
   );
   return response.data.data;
