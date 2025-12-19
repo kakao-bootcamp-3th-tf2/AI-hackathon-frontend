@@ -48,9 +48,10 @@ class HttpClient {
   private tokenListeners = new Set<(token: string | null) => void>();
 
   constructor(config: HttpClientConfig) {
+    const resolvedTimeout = config.timeout ?? 0;
     this.client = axios.create({
       baseURL: config.baseURL,
-      timeout: config.timeout || 10000,
+      timeout: resolvedTimeout,
       headers: {
         "Content-Type": "application/json",
         ...config.headers

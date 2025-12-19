@@ -87,11 +87,16 @@ export default function CalendarFeature({
     };
   }, []);
 
-  const getActionBounds = useCallback((action: Action) => {
-    const rangeStart = startOfDay(action.range?.start ?? action.date);
-    const rangeEnd = endOfDay(action.range?.end ?? action.range?.start ?? action.date);
-    return { start: rangeStart, end: rangeEnd };
-  }, []);
+  const getActionBounds = useCallback(
+    (action: Action): { start: Date; end: Date } => {
+      const rangeStart = startOfDay(action.range?.start ?? action.date);
+      const fallbackEnd = action.range?.end ?? action.range?.start;
+      const resolvedEnd = fallbackEnd ?? action.date;
+      const rangeEnd = endOfDay(resolvedEnd);
+      return { start: rangeStart, end: rangeEnd };
+    },
+    []
+  );
 
   /**
    * 특정 날짜의 Google Calendar 이벤트 조회

@@ -155,7 +155,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const getActionInterval = useCallback((action: Action) => {
     const rangeStart = startOfDay(action.range?.start ?? action.date);
-    const rangeEnd = endOfDay(action.range?.end ?? action.range?.start ?? action.date);
+    const fallbackEnd = action.range?.end ?? action.range?.start;
+    const resolvedEnd = fallbackEnd ?? action.date;
+    const rangeEnd = endOfDay(resolvedEnd);
     return { start: rangeStart, end: rangeEnd };
   }, []);
 

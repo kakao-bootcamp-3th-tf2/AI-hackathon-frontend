@@ -45,10 +45,11 @@ export const usePrimaryCalendarEvents = (params: UsePrimaryCalendarEventsOptions
 
   return useQuery({
     queryKey: googleCalendarQueryKeys.primary.eventsByRange({ from, to }),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       fetchPrimaryCalendarEvents({
         from,
-        to
+        to,
+        signal
       }),
     enabled: enabled && !!from && !!to,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -86,17 +87,9 @@ export const useManualUpdateEvent = (
     UseMutationOptions<GoogleCalendarEventDto, Error, GoogleCalendarManualUpdateRequest>
   >
 ) => {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: (request: GoogleCalendarManualUpdateRequest) =>
       manualUpdateEvent(request),
-    onSuccess: () => {
-      // Invalidate all calendar event queries
-      queryClient.invalidateQueries({
-        queryKey: googleCalendarQueryKeys.primary.all
-      });
-    },
     onError: (error) => {
       console.error("Failed to manually update event:", error);
     },
