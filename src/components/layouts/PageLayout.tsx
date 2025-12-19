@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Home, Search, User, type LucideIcon } from "lucide-react";
+import { Home, User, type LucideIcon } from "lucide-react";
 
 const navItems: { label: string; href: string; icon: LucideIcon }[] = [
   // { label: "검색", href: "/app/search", icon: Search },
@@ -15,6 +16,11 @@ interface PageLayoutProps {
 
 export default function PageLayout({ children }: PageLayoutProps) {
   const router = useRouter();
+  const [activePath, setActivePath] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActivePath(router.pathname);
+  }, [router.pathname]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -25,7 +31,7 @@ export default function PageLayout({ children }: PageLayoutProps) {
         className="sticky bottom-0 gap-10 z-10 flex items-center justify-center border-t border-border/70 bg-card/95 px-6 py-4 text-sm shadow-[0_-2px_10px_rgba(15,23,42,0.1)] backdrop-blur"
       >
         {navItems.map((item) => {
-          const isActive = router.pathname === item.href;
+          const isActive = activePath === item.href;
           const Icon = item.icon;
 
           return (

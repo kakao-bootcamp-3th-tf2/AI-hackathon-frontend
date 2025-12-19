@@ -14,7 +14,9 @@ const CATEGORY_STYLES: Record<Action["category"], string> = {
 
 const getActionBounds = (action: Action) => {
   const start = startOfDay(action.range?.start ?? action.date);
-  const end = endOfDay(action.range?.end ?? action.range?.start ?? action.date);
+  const fallbackEnd = action.range?.end ?? action.range?.start;
+  const resolvedEnd = fallbackEnd ?? action.date;
+  const end = endOfDay(resolvedEnd);
   return { start, end };
 };
 

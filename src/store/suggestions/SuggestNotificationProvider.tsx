@@ -1,10 +1,17 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from "react";
+import { endOfDay, format, startOfDay } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
+import { Input } from "@/components/ui/input";
 import {
   SuggestBenefitWithEventInfo,
   GoogleCalendarSuggest,
@@ -28,6 +35,22 @@ const SuggestNotificationContext = createContext<SuggestNotificationContextValue
   null
 );
 
+const toUtcIso = (date: Date) =>
+  new Date(
+    Date.UTC(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      date.getHours(),
+      date.getMinutes(),
+      date.getSeconds(),
+      date.getMilliseconds()
+    )
+  ).toISOString();
+
+const toUtcStartOfDay = (date: Date) => toUtcIso(startOfDay(date));
+const toUtcEndOfDay = (date: Date) => toUtcIso(endOfDay(date));
+
 export const SuggestNotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   children
 }) => {
@@ -37,11 +60,47 @@ export const SuggestNotificationProvider: React.FC<{ children: React.ReactNode }
   const [pendingSuggestion, setPendingSuggestion] = useState<PendingSuggestion | null>(
     null
   );
+  const [selectedDateValue, setSelectedDateValue] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
   const setNotifications = useCallback((items: SuggestBenefitWithEventInfo[]) => {
     setNotificationsState(items);
+  }, []);
+
+  const rangeStartDate = useMemo(() => {
+    if (!pendingSuggestion?.suggest.startAt) {
+      return null;
+    }
+    return startOfDay(new Date(pendingSuggestion.suggest.startAt));
+  }, [pendingSuggestion]);
+
+  const rangeEndDate = useMemo(() => {
+    if (!pendingSuggestion) {
+      return null;
+    }
+    if (!pendingSuggestion.suggest.endAt) {
+      return rangeStartDate;
+    }
+    return startOfDay(new Date(pendingSuggestion.suggest.endAt));
+  }, [pendingSuggestion, rangeStartDate]);
+
+  useEffect(() => {
+    if (rangeStartDate) {
+      setSelectedDateValue(format(rangeStartDate, "yyyy-MM-dd"));
+      return;
+    }
+    setSelectedDateValue(null);
+  }, [rangeStartDate]);
+
+  const selectedDate = useMemo(() => {
+    if (!selectedDateValue) {
+      return null;
+    }
+    return startOfDay(new Date(selectedDateValue));
+  }, [selectedDateValue]);
+
+  const handleDateChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedDateValue(event.target.value || null);
   }, []);
 
   const clearSuggestionFromNotifications = useCallback(
@@ -92,12 +151,15 @@ export const SuggestNotificationProvider: React.FC<{ children: React.ReactNode }
   });
 
   const applyPendingSuggestion = useCallback(() => {
-    if (!pendingSuggestion) return;
+    if (!pendingSuggestion || !selectedDate) return;
+    const startAt = toUtcStartOfDay(selectedDate);
+    const endAt = toUtcEndOfDay(selectedDate);
+
     manualUpdateMutation.mutate(
       {
         eventId: pendingSuggestion.eventId,
-        startAt: pendingSuggestion.suggest.startAt,
-        endAt: pendingSuggestion.suggest.endAt,
+        startAt,
+        endAt,
         suggest: pendingSuggestion.suggest.suggest
       },
       {
@@ -112,7 +174,7 @@ export const SuggestNotificationProvider: React.FC<{ children: React.ReactNode }
         }
       }
     );
-  }, [clearSuggestionFromNotifications, manualUpdateMutation, pendingSuggestion]);
+  }, [clearSuggestionFromNotifications, manualUpdateMutation, pendingSuggestion, selectedDate]);
 
   const requestSuggestionEdit = useCallback(
     (eventId: string, suggest: GoogleCalendarSuggest) => {
@@ -160,28 +222,24 @@ export const SuggestNotificationProvider: React.FC<{ children: React.ReactNode }
                   {pendingSuggestion.suggest.suggest}
                 </p>
               </div>
-              <div className="text-xs text-muted-foreground">
-                {pendingSuggestion.suggest.startAt &&
-                  `${format(
-                    new Date(pendingSuggestion.suggest.startAt),
-                    "yyyy.MM.dd HH:mm",
-                    {
-                      locale: ko
-                    }
-                  )} - ${
-                    pendingSuggestion.suggest.endAt
-                      ? format(
-                          new Date(pendingSuggestion.suggest.endAt),
-                          "yyyy.MM.dd HH:mm",
-                          { locale: ko }
-                        )
-                      : format(
-                          new Date(pendingSuggestion.suggest.startAt),
-                          "yyyy.MM.dd HH:mm",
-                          { locale: ko }
-                        )
-                  }`}
-              </div>
+              {rangeStartDate && rangeEndDate && (
+                <div className="space-y-3 pt-2">
+                  <p className="text-xs text-muted-foreground">적용할 날짜</p>
+                  <Input
+                    type="date"
+                    value={selectedDateValue ?? ""}
+                    onChange={handleDateChange}
+                    min={format(rangeStartDate, "yyyy-MM-dd")}
+                    max={format(rangeEndDate, "yyyy-MM-dd")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {`${format(rangeStartDate, "yyyy.MM.dd")} ~ ${format(
+                      rangeEndDate,
+                      "yyyy.MM.dd"
+                    )}`}
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>
